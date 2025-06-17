@@ -1,3 +1,22 @@
+/**
+ * useGameEngine - Core HTML5 Canvas rendering engine for the CS2 Memory Game
+ *
+ * This composable provides the low-level canvas rendering infrastructure:
+ * - Manages HTML5 Canvas setup with high-DPI support
+ * - Implements game loop with requestAnimationFrame for smooth 60fps rendering
+ * - Handles canvas object management and z-index layering
+ * - Provides card rendering pipeline with flip animations
+ * - Manages parallax effects and visual transformations
+ * - Tracks performance metrics (FPS, frame timing, render stats)
+ *
+ * Key features:
+ * - High-DPI canvas setup for crisp rendering on Retina displays
+ * - Efficient object pooling to minimize garbage collection
+ * - Canvas coordinate system management and hit detection
+ * - Animation system with easing functions and smooth transitions
+ * - Debug rendering mode for development and troubleshooting
+ * - Memory-efficient rendering with object culling and batching
+ */
 import { ref, reactive, readonly } from "vue";
 import type { GameCard } from "~/types/game";
 

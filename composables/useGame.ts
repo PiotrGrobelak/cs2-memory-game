@@ -1,3 +1,22 @@
+/**
+ * useGame - Unified game API composable for the CS2 Memory Game
+ *
+ * This composable provides a simplified, unified interface to the game's core functionality:
+ * - Orchestrates interactions between multiple Pinia stores (core, cards, timer)
+ * - Provides high-level game actions (start, pause, restart, card selection)
+ * - Exposes reactive game state through store composition
+ * - Handles game lifecycle management and state transitions
+ * - Simplifies component integration by abstracting store complexity
+ * - Maintains consistency between related game systems
+ *
+ * Key features:
+ * - Single point of access for all game operations
+ * - Reactive state composition from multiple stores
+ * - Coordinated actions across game subsystems
+ * - Game progress tracking and completion detection
+ * - Helper functions for common game state queries
+ * - Clean separation between game logic and UI components
+ */
 import { storeToRefs } from "pinia";
 import { useGameCoreStore } from "~/stores/game/core";
 import { useGameCardsStore } from "~/stores/game/cards";

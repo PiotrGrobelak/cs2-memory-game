@@ -1,3 +1,22 @@
+/**
+ * useCanvasObjects - Object pooling and management system for canvas rendering
+ *
+ * This composable provides efficient object lifecycle management for canvas rendering:
+ * - Implements object pooling to minimize garbage collection and improve performance
+ * - Manages different types of canvas objects (cards, effects, UI elements)
+ * - Handles object activation, deactivation, and recycling
+ * - Provides collision detection and spatial queries
+ * - Organizes objects into render batches for optimal drawing order
+ * - Tracks performance metrics and memory usage
+ *
+ * Key features:
+ * - Memory-efficient object pools with configurable sizing
+ * - Fast collision detection for user interaction handling
+ * - Spatial indexing for efficient object queries
+ * - Automatic object lifecycle management (acquire/release)
+ * - Z-index sorting and render batch optimization
+ * - Performance monitoring and pool statistics
+ */
 import { ref, computed, reactive } from "vue";
 import type { GameCard } from "~/types/game";
 

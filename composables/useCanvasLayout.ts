@@ -1,3 +1,22 @@
+/**
+ * useCanvasLayout - Responsive layout system for the memory game canvas
+ *
+ * This composable manages the responsive layout and positioning of game elements:
+ * - Calculates optimal card sizes and grid layouts for different screen sizes
+ * - Implements responsive breakpoints (mobile, tablet, desktop)
+ * - Handles canvas resizing and container size changes
+ * - Manages spacing, padding, and aspect ratios across devices
+ * - Provides coordinate conversion between canvas and screen space
+ * - Ensures consistent gameplay experience across all device sizes
+ *
+ * Key features:
+ * - Multi-breakpoint responsive design (320px to desktop)
+ * - Automatic card size optimization based on available space
+ * - Grid layout calculation for different difficulty levels
+ * - Real-time layout updates on container resize
+ * - Canvas coordinate system management
+ * - Minimum size constraints to ensure playability
+ */
 import { ref, computed, reactive } from "vue";
 import type { DifficultyLevel } from "~/types/game";
 

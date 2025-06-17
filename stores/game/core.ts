@@ -102,6 +102,10 @@ export const useGameCoreStore = defineStore("game-core", () => {
     stats.value.timeElapsed = time;
   };
 
+  const restoreStats = (savedStats: GameStats) => {
+    stats.value = { ...savedStats };
+  };
+
   // Helper functions
   const generateSeed = (): string => {
     // Generate a truly unique seed by combining multiple entropy sources
@@ -171,5 +175,6 @@ export const useGameCoreStore = defineStore("game-core", () => {
     incrementMatches,
     completeGame,
     updateTimeElapsed,
+    restoreStats,
   };
 });

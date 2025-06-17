@@ -1,3 +1,22 @@
+/**
+ * useGameSync - Real-time synchronization between game state and canvas rendering
+ *
+ * This composable bridges the gap between Pinia stores and canvas rendering:
+ * - Watches for changes in game state and card states
+ * - Batches and debounces state changes for optimal performance
+ * - Synchronizes visual updates with game logic updates
+ * - Manages animation triggers and visual feedback
+ * - Handles immediate UI updates for responsive user interaction
+ * - Provides performance monitoring and optimization
+ *
+ * Key features:
+ * - Event-driven architecture with batched processing
+ * - Configurable batching and debouncing for performance tuning
+ * - Automatic detection of card state changes (position, flip state, etc.)
+ * - Visual feedback for card selection and matching
+ * - Performance metrics tracking for optimization
+ * - Graceful handling of rapid state changes during gameplay
+ */
 import { ref, watch, nextTick } from "vue";
 import { useGameCoreStore } from "~/stores/game/core";
 import { useGameCardsStore } from "~/stores/game/cards";

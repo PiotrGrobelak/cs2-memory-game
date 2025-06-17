@@ -97,17 +97,6 @@ Memory game enthusiasts and CS2 players lack a high-quality, feature-rich browse
 - Comprehensive game statistics and history
 - Audio effects and visual feedback
 
-### 4.2 Out of Scope
-
-- Multiplayer functionality
-- User accounts and cloud synchronization
-- Social media integration
-- Monetization features (ads, purchases)
-- Advanced accessibility features (initial release)
-- Real-time leaderboards
-- Custom item upload functionality
-- Integration with Steam or CS2 accounts
-
 ### 4.3 Future Considerations
 
 - Accessibility enhancements (screen readers, keyboard navigation)

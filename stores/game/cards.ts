@@ -208,6 +208,50 @@ export const useGameCardsStore = defineStore("game-cards", () => {
     });
   };
 
+  const setCS2Items = (cs2Items: CS2Item[]): void => {
+    // Update existing cards with real CS2 items
+    const cardPairs = cs2Items.length;
+    const newCards: GameCard[] = [];
+
+    for (let i = 0; i < cardPairs; i++) {
+      const pairId = `pair-${i}`;
+      const cs2Item = cs2Items[i];
+
+      // Create two cards for each CS2 item (pair)
+      for (let j = 0; j < 2; j++) {
+        const cardId = `${pairId}-${j}`;
+        newCards.push({
+          id: cardId,
+          pairId,
+          cs2Item,
+          state: "hidden",
+          position: { x: 0, y: 0 }, // Will be set by layout logic
+        });
+      }
+    }
+
+    // Maintain current shuffle if cards exist, otherwise shuffle new cards
+    if (cards.value.length > 0 && newCards.length === cards.value.length) {
+      // Update existing cards with new CS2 items while maintaining positions
+      cards.value.forEach((existingCard, index) => {
+        if (newCards[index]) {
+          existingCard.cs2Item = newCards[index].cs2Item;
+          existingCard.pairId = newCards[index].pairId;
+        }
+      });
+    } else {
+      cards.value = newCards;
+    }
+  };
+
+  const restoreState = (savedCards: GameCard[]): void => {
+    // Restore cards from saved state
+    cards.value = [...savedCards];
+
+    // Clear selected cards on restore
+    selectedCards.value = [];
+  };
+
   return {
     // State
     cards,
@@ -225,5 +269,7 @@ export const useGameCardsStore = defineStore("game-cards", () => {
     generateCards,
     resetCards,
     hideAllRevealedCards,
+    setCS2Items,
+    restoreState,
   };
 });

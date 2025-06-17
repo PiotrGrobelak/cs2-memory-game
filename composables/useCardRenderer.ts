@@ -1,3 +1,22 @@
+/**
+ * useCardRenderer - Advanced card rendering system for CS2-themed memory cards
+ *
+ * This composable handles the visual rendering of individual cards with rich effects:
+ * - Renders CS2 weapon skin cards with rarity-based visual styling
+ * - Implements flip animations with realistic 3D-like effects
+ * - Creates rarity-specific gradients and glow effects (Consumer, Classified, Covert, etc.)
+ * - Manages parallax movement and depth effects
+ * - Handles card state transitions (hidden, revealed, matched, selected)
+ * - Optimizes rendering performance with gradient caching and batching
+ *
+ * Key features:
+ * - Rarity-based visual themes matching CS2 item rarities
+ * - Smooth flip animations with configurable easing functions
+ * - Parallax depth effects for immersive 3D feel
+ * - Performance-optimized rendering with canvas gradient caching
+ * - Responsive card scaling and text truncation
+ * - Visual feedback for user interactions (hover, selection, matching)
+ */
 import { ref, reactive } from "vue";
 import type { GameCard, ItemRarity } from "~/types/game";
 
