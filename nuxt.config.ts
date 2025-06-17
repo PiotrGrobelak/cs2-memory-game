@@ -11,6 +11,7 @@ export default defineNuxtConfig({
     "@nuxt/test-utils/module",
     "@nuxtjs/tailwindcss",
     "@nuxt/eslint",
+    "@pinia/nuxt",
   ],
 
   primevue: {

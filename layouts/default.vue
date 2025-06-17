@@ -1,6 +1,5 @@
 <template>
-  <div>
-    <p>Some default layout content shared across all pages</p>
+  <div class="flex flex-col items-center justify-center h-screen">
     <slot />
   </div>
 </template>

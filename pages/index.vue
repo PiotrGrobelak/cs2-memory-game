@@ -1,9 +1,8 @@
 <template>
   <div>
-    <h1>CS2 Memory Game</h1>
-    <p>Index page</p>
+    <h1 class="text-2xl font-bold">CS2 Memory Game</h1>
 
-    <Button label="Verify" />
+    <GameCanvas />
   </div>
 </template>
 
