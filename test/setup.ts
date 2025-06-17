@@ -45,6 +45,10 @@ vi.stubGlobal(
     constructor() {
       return canvasMock;
     }
+    getContext(contextId: string) {
+      console.log("getContext", contextId);
+      return canvasContextMock;
+    }
   }
 );
 

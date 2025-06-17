@@ -5,7 +5,7 @@ test.describe("CS2 Memory Game", () => {
     await page.goto("/");
 
     // Check if the page loads without errors
-    await expect(page).toHaveTitle(/CS2 Memory Game|Nuxt/);
+    await expect(page.locator("h1")).toHaveText("CS2 Memory Game");
 
     // Wait for the page to be fully loaded
     await page.waitForLoadState("networkidle");

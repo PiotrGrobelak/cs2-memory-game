@@ -3,7 +3,7 @@ description:
 globs: 
 alwaysApply: false
 ---
-# AI Rules for Techno Ambassador
+# AI Rules for CS2 Memory Game 
 
 Stwórz grę typu memory w frameworku Vue3 lub Nuxt3. Gracz będzie odkrywał pary identycznych obrazków przedstawiających przedmioty z gry
 Counter-Strike 2 (CS2), takimi jak bronie.
@@ -23,6 +23,7 @@ When introducing changes to the project, always follow the directory structure b
 - `./layouts` - layouts
 - `./pages` - pages
 - `./components` - components
+- `./composables/` - composables
 - `./assets` - static internal assets
 - `./public` - public assets
 
