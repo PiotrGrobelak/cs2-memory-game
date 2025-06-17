@@ -1,0 +1,22 @@
+---
+description: 
+globs: *.vue,*.ts
+alwaysApply: false
+---
+## FRONTEND
+
+### Guidelines for VUE
+
+#### NUXT
+
+- Use Nuxt 3 with the Composition API and <script setup> for modern applications
+- Leverage auto-imports for Vue and Nuxt composables to reduce boilerplate
+- Implement server routes with the server directory for API functionality
+- Use Nuxt modules for extending functionality instead of custom plugins when possible
+- Leverage the useAsyncData and useFetch composables for data fetching with SSR support
+- Implement middleware (defineNuxtRouteMiddleware) for navigation guards
+- Use Nuxt layouts for consistent page layouts across routes
+- Leverage Nitro for server-side rendering and API routes
+- Implement Nuxt plugins for global functionality registration
+- Use state management with useState for simple state or Pinia for complex applications
+

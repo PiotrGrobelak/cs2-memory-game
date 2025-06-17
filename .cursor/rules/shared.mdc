@@ -20,11 +20,10 @@ Counter-Strike 2 (CS2), takimi jak bronie.
 
 When introducing changes to the project, always follow the directory structure below:
 
-- `./src` - source code
-- `./src/layouts` - layouts
-- `./src/pages` - pages
-- `./src/components` - components
-- `./src/assets` - static internal assets
+- `./layouts` - layouts
+- `./pages` - pages
+- `./components` - components
+- `./assets` - static internal assets
 - `./public` - public assets
 
 When modifying the directory structure, always update this section.
