@@ -238,6 +238,9 @@ export const useGameEngine = () => {
     // Draw background
     drawBackground(ctx);
 
+    // Draw game board area
+    drawBoard(ctx);
+
     // Sort objects by z-index
     const sortedObjects = Array.from(canvasObjects.value.values())
       .filter((obj) => obj.visible)
@@ -320,6 +323,41 @@ export const useGameEngine = () => {
   };
 
   /**
+   * Draw game board area
+   */
+  const drawBoard = (ctx: CanvasRenderingContext2D): void => {
+    if (!canvas.value) return;
+
+    // Board takes the entire canvas area
+    const boardWidth = canvas.value.width;
+    const boardHeight = canvas.value.height;
+
+    // Draw board background with subtle border
+    ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+    ctx.fillRect(0, 0, boardWidth, boardHeight);
+
+    // Draw board border
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, boardWidth - 2, boardHeight - 2);
+
+    // Draw subtle inner shadow effect
+    const gradient = ctx.createRadialGradient(
+      boardWidth / 2,
+      boardHeight / 2,
+      0,
+      boardWidth / 2,
+      boardHeight / 2,
+      Math.max(boardWidth, boardHeight) / 2
+    );
+    gradient.addColorStop(0, "rgba(0, 0, 0, 0)");
+    gradient.addColorStop(1, "rgba(0, 0, 0, 0.1)");
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, boardWidth, boardHeight);
+  };
+
+  /**
    * Update card animation state
    */
   const updateCardAnimation = (
@@ -396,6 +434,24 @@ export const useGameEngine = () => {
     const cardData = data as CardObjectData;
     const card = cardData.card;
     const parallaxOffset = cardData.parallaxOffset || { x: 0, y: 0 };
+
+    // Preload image immediately when card is rendered (regardless of state)
+    if (
+      !imageLoader.isImageLoaded(card.cs2Item.imageUrl) &&
+      !imageLoader.isImageLoading(card.cs2Item.imageUrl)
+    ) {
+      imageLoader
+        .loadImage(card.cs2Item.imageUrl, {
+          crossOrigin: "anonymous",
+          timeout: 10000, // 10 second timeout
+        })
+        .catch((error) => {
+          console.warn(
+            `Failed to preload weapon image for ${card.cs2Item.name}:`,
+            error
+          );
+        });
+    }
 
     // Apply parallax offset
     const x = position.x + parallaxOffset.x;

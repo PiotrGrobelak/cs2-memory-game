@@ -21,12 +21,39 @@
     <div class="game-controls mb-6 transition-all duration-200">
       <div class="flex flex-wrap gap-3 justify-center">
         <Button
-          v-if="gameController.gameStatus.value === 'ready'"
+          v-if="
+            gameController.gameStatus.value === 'ready' &&
+            gameController.canContinueSavedGame.value
+          "
+          label="Continue Game"
+          icon="pi pi-play-circle"
+          severity="success"
+          size="large"
+          @click="continueSavedGame"
+        />
+
+        <Button
+          v-if="
+            gameController.gameStatus.value === 'ready' &&
+            !gameController.canContinueSavedGame.value
+          "
           label="Start Game"
           icon="pi pi-play"
           severity="success"
           size="large"
           @click="startNewGame"
+        />
+
+        <Button
+          v-if="
+            gameController.gameStatus.value === 'ready' &&
+            gameController.canContinueSavedGame.value
+          "
+          label="Start New Game"
+          icon="pi pi-plus"
+          severity="info"
+          outlined
+          @click="confirmStartNewGame"
         />
 
         <Button
@@ -56,6 +83,7 @@
         />
 
         <Button
+          v-if="!gameController.canContinueSavedGame.value"
           label="New Game"
           icon="pi pi-plus"
           severity="info"
@@ -72,6 +100,7 @@
       <GameCanvas
         :enable-parallax="uiStore.uiOptions.enableParallax"
         :enable-sound="uiStore.uiOptions.enableSound"
+        :debug-mode="DEBUG_MODE"
       />
     </div>
 
@@ -139,6 +168,9 @@ const uiStore = useGameUIStore();
 const _confirm = useConfirm();
 const toast = useToast();
 
+// Debug configuration (set to true for development/testing)
+const DEBUG_MODE = import.meta.env.DEBUG_MODE === "true";
+
 // Difficulty configurations
 const difficulties = [
   {
@@ -176,6 +208,28 @@ const startNewGame = async () => {
     await gameController.game.startGame();
   } catch (error) {
     console.error("Failed to start game:", error);
+  }
+};
+
+const continueSavedGame = async () => {
+  try {
+    const success = await gameController.continueSavedGame();
+    if (success) {
+      toast.add({
+        severity: "success",
+        summary: "Game Resumed",
+        detail: "Your saved game has been resumed",
+        life: 3000,
+      });
+    }
+  } catch (error) {
+    console.error("Failed to continue saved game:", error);
+    toast.add({
+      severity: "error",
+      summary: "Error",
+      detail: "Failed to continue saved game",
+      life: 3000,
+    });
   }
 };
 
@@ -284,6 +338,21 @@ const handleNewGameStart = async (options: {
       life: 3000,
     });
   }
+};
+
+const confirmStartNewGame = () => {
+  _confirm.require({
+    message:
+      "Are you sure you want to start a new game? Your current saved game will be lost.",
+    header: "Confirm New Game",
+    icon: "pi pi-exclamation-triangle",
+    accept: async () => {
+      uiStore.openDialog("newGame");
+    },
+    reject: () => {
+      // User rejected the confirmation
+    },
+  });
 };
 
 // Watchers

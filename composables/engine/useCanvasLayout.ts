@@ -2,8 +2,9 @@
  * useCanvasLayout - Responsive layout system for the memory game canvas
  *
  * This composable manages the responsive layout and positioning of game elements:
- * - Calculates optimal card sizes and grid layouts for different screen sizes
+ * - Calculates optimal card sizes based on available board space and grid layout
  * - Implements responsive breakpoints (mobile, tablet, desktop)
+ * - Calculates optimal canvas size based on card layout requirements (no empty space)
  * - Handles canvas resizing and container size changes
  * - Manages spacing, padding, and aspect ratios across devices
  * - Provides coordinate conversion between canvas and screen space
@@ -11,7 +12,8 @@
  *
  * Key features:
  * - Multi-breakpoint responsive design (320px to desktop)
- * - Automatic card size optimization based on available space
+ * - Dynamic card size calculation based on board space divided by grid dimensions
+ * - Optimal canvas size calculation based on actual card layout needs
  * - Grid layout calculation for different difficulty levels
  * - Real-time layout updates on container resize
  * - Canvas coordinate system management
@@ -35,8 +37,7 @@ interface BreakpointConfig {
   minWidth: number;
   maxWidth?: number;
   cardAspectRatio: number;
-  minCardSize: number;
-  maxCardSize: number;
+  cardSize: number;
   spacing: number;
   padding: number;
 }
@@ -47,30 +48,27 @@ const BREAKPOINTS: BreakpointConfig[] = [
     name: "mobile",
     minWidth: 320,
     maxWidth: 767,
-    cardAspectRatio: 0.7, // Height/width ratio
-    minCardSize: 60,
-    maxCardSize: 90,
-    spacing: 8,
+    cardAspectRatio: 0.75, // Slightly more square for mobile
+    cardSize: 80, // Increased from 20 to 80 (4x larger)
+    spacing: 24, // Increased from 6 to 24 (4x larger)
     padding: 16,
   },
   {
     name: "tablet",
     minWidth: 768,
     maxWidth: 1023,
-    cardAspectRatio: 0.7,
-    minCardSize: 80,
-    maxCardSize: 120,
-    spacing: 12,
-    padding: 24,
+    cardAspectRatio: 0.75,
+    cardSize: 260, // Increased from 40 to 120 (3x larger)
+    spacing: 24, // Increased from 8 to 24 (3x larger)
+    padding: 16,
   },
   {
     name: "desktop",
     minWidth: 1024,
-    cardAspectRatio: 0.7,
-    minCardSize: 100,
-    maxCardSize: 150,
-    spacing: 16,
-    padding: 32,
+    cardAspectRatio: 0.65, // Slightly wider cards for desktop
+    cardSize: 180, // Increased from 60 to 180 (3x larger)
+    spacing: 30, // Increased from 10 to 30 (3x larger)
+    padding: 16,
   },
 ];
 
@@ -80,11 +78,11 @@ export const useCanvasLayout = () => {
 
   // Current layout configuration
   const layoutConfig = reactive<LayoutConfig>({
-    canvasSize: { width: 800, height: 600 },
-    cardSize: { width: 100, height: 140 },
+    canvasSize: { width: 400, height: 300 }, // Will be calculated based on actual card layout
+    cardSize: { width: 80, height: 60 }, // Will be calculated based on available board space
     gridLayout: { rows: 3, cols: 4 },
-    spacing: { horizontal: 16, vertical: 16 },
-    padding: { top: 32, right: 32, bottom: 32, left: 32 },
+    spacing: { horizontal: 16, vertical: 16 }, // Will be set based on breakpoint
+    padding: { top: 16, right: 16, bottom: 16, left: 16 },
   });
 
   // Current breakpoint
@@ -92,7 +90,7 @@ export const useCanvasLayout = () => {
     const width = containerSize.value.width;
     return (
       BREAKPOINTS.find(
-        (bp) => width >= bp.minWidth && (!bp.maxWidth || width <= bp.maxWidth),
+        (bp) => width >= bp.minWidth && (!bp.maxWidth || width <= bp.maxWidth)
       ) || BREAKPOINTS[BREAKPOINTS.length - 1]
     ); // Default to desktop
   });
@@ -111,11 +109,33 @@ export const useCanvasLayout = () => {
    */
   const updateContainerSize = (width: number, height: number): void => {
     containerSize.value = { width, height };
+    // Canvas size will be calculated in calculateLayout based on card requirements
+  };
 
-    // Update canvas size to match container
-    layoutConfig.canvasSize = {
-      width: Math.max(320, width), // Minimum width as per requirements
-      height: Math.max(240, height),
+  /**
+   * Calculate optimal canvas size based on card layout
+   */
+  const calculateOptimalCanvasSize = (
+    cardSize: { width: number; height: number },
+    gridLayout: { rows: number; cols: number },
+    spacing: { horizontal: number; vertical: number },
+    padding: { top: number; right: number; bottom: number; left: number }
+  ): { width: number; height: number } => {
+    // Calculate total width needed for all cards and spacing
+    const totalCardsWidth = gridLayout.cols * cardSize.width;
+    const totalSpacingWidth = (gridLayout.cols - 1) * spacing.horizontal;
+    const canvasWidth =
+      totalCardsWidth + totalSpacingWidth + padding.left + padding.right;
+
+    // Calculate total height needed for all cards and spacing
+    const totalCardsHeight = gridLayout.rows * cardSize.height;
+    const totalSpacingHeight = (gridLayout.rows - 1) * spacing.vertical;
+    const canvasHeight =
+      totalCardsHeight + totalSpacingHeight + padding.top + padding.bottom;
+
+    return {
+      width: Math.round(canvasWidth),
+      height: Math.round(canvasHeight),
     };
   };
 
@@ -133,127 +153,125 @@ export const useCanvasLayout = () => {
       return;
     }
 
+    // STEP 1: Calculate total number of cards
+    const totalCards = difficulty.gridSize.rows * difficulty.gridSize.cols;
+
     // Update grid layout from difficulty
     layoutConfig.gridLayout = {
       rows: difficulty.gridSize.rows,
       cols: difficulty.gridSize.cols,
     };
 
-    // Calculate padding based on breakpoint
-    const padding = breakpoint.padding;
+    // STEP 2: Set padding and spacing first
     layoutConfig.padding = {
-      top: padding,
-      right: padding,
-      bottom: padding,
-      left: padding,
+      top: 16,
+      right: 16,
+      bottom: 16,
+      left: 16,
     };
 
-    // Calculate available space
-    const availableWidth =
-      containerWidth - (layoutConfig.padding.left + layoutConfig.padding.right);
-    const availableHeight =
-      containerHeight -
-      (layoutConfig.padding.top + layoutConfig.padding.bottom);
-
-    // Calculate spacing
-    const spacing = breakpoint.spacing;
     layoutConfig.spacing = {
-      horizontal: spacing,
-      vertical: spacing,
+      horizontal: breakpoint.spacing,
+      vertical: breakpoint.spacing,
     };
 
-    // Calculate card size based on available space and grid
-    const cardSize = calculateOptimalCardSize(
-      availableWidth,
-      availableHeight,
+    // STEP 3: Calculate available board space (container minus padding)
+    const availableBoardWidth = containerWidth - 32; // 16px padding on each side
+    const availableBoardHeight = containerHeight - 32; // 16px padding on each side
+
+    // STEP 4: Calculate optimal card size based on board space and grid layout
+    const cardSize = calculateOptimalCardSizeFromGrid(
+      availableBoardWidth,
+      availableBoardHeight,
       difficulty.gridSize,
-      breakpoint,
+      breakpoint
     );
 
     layoutConfig.cardSize = cardSize;
 
-    // Recalculate actual canvas size based on final layout
-    const totalWidth =
-      layoutConfig.padding.left +
-      layoutConfig.padding.right +
-      cardSize.width * difficulty.gridSize.cols +
-      layoutConfig.spacing.horizontal * (difficulty.gridSize.cols - 1);
+    // STEP 5: Calculate optimal canvas size based on actual card layout requirements
+    const optimalCanvasSize = calculateOptimalCanvasSize(
+      layoutConfig.cardSize,
+      layoutConfig.gridLayout,
+      layoutConfig.spacing,
+      layoutConfig.padding
+    );
 
-    const totalHeight =
-      layoutConfig.padding.top +
-      layoutConfig.padding.bottom +
-      cardSize.height * difficulty.gridSize.rows +
-      layoutConfig.spacing.vertical * (difficulty.gridSize.rows - 1);
-
+    // Ensure canvas doesn't exceed container size
     layoutConfig.canvasSize = {
-      width: Math.min(totalWidth, containerWidth),
-      height: Math.min(totalHeight, containerHeight),
+      width: Math.min(optimalCanvasSize.width, containerWidth),
+      height: Math.min(optimalCanvasSize.height, containerHeight),
     };
 
-    console.log("Layout calculated:", {
+    console.log("Layout calculated (board-based card sizing):", {
       difficulty: difficulty.name,
       breakpoint: breakpoint.name,
+      totalCards,
       containerSize: containerSize.value,
-      canvasSize: layoutConfig.canvasSize,
-      cardSize: layoutConfig.cardSize,
+      availableBoardSize: {
+        width: availableBoardWidth,
+        height: availableBoardHeight,
+      },
+      calculatedCardSize: layoutConfig.cardSize,
+      optimalCanvasSize,
+      finalCanvasSize: layoutConfig.canvasSize,
       gridLayout: layoutConfig.gridLayout,
     });
   };
 
   /**
-   * Calculate optimal card size for given constraints
+   * Calculate optimal card size from board dimensions and grid layout
+   * This replaces the previous calculateCardSizeFromBoard function
    */
-  const calculateOptimalCardSize = (
-    availableWidth: number,
-    availableHeight: number,
+  const calculateOptimalCardSizeFromGrid = (
+    availableBoardWidth: number,
+    availableBoardHeight: number,
     gridSize: { rows: number; cols: number },
-    breakpoint: BreakpointConfig,
+    breakpoint: BreakpointConfig
   ): { width: number; height: number } => {
-    // Calculate maximum card size based on available space
-    const maxWidthFromSpace =
-      (availableWidth - layoutConfig.spacing.horizontal * (gridSize.cols - 1)) /
+    // Calculate maximum possible card width and height based on grid
+    const maxCardWidth =
+      (availableBoardWidth - breakpoint.spacing * (gridSize.cols - 1)) /
       gridSize.cols;
-    const maxHeightFromSpace =
-      (availableHeight - layoutConfig.spacing.vertical * (gridSize.rows - 1)) /
+    const maxCardHeight =
+      (availableBoardHeight - breakpoint.spacing * (gridSize.rows - 1)) /
       gridSize.rows;
 
-    // Apply aspect ratio constraint
-    const maxWidthFromHeight = maxHeightFromSpace / breakpoint.cardAspectRatio;
-    const maxHeightFromWidth = maxWidthFromSpace * breakpoint.cardAspectRatio;
+    // Apply aspect ratio constraint - use the more constraining dimension
+    const constrainedWidth = maxCardHeight / breakpoint.cardAspectRatio;
+    const constrainedHeight = maxCardWidth * breakpoint.cardAspectRatio;
 
-    // Choose the most constraining dimension
-    let cardWidth: number;
-    let cardHeight: number;
+    let finalWidth: number;
+    let finalHeight: number;
 
-    if (maxWidthFromHeight <= maxWidthFromSpace) {
-      // Height is the constraining factor
-      cardWidth = maxWidthFromHeight;
-      cardHeight = maxHeightFromSpace;
+    if (constrainedWidth <= maxCardWidth) {
+      // Height constrains width
+      finalWidth = constrainedWidth;
+      finalHeight = maxCardHeight;
     } else {
-      // Width is the constraining factor
-      cardWidth = maxWidthFromSpace;
-      cardHeight = maxHeightFromWidth;
+      // Width constrains height
+      finalWidth = maxCardWidth;
+      finalHeight = constrainedHeight;
     }
 
-    // Apply breakpoint size constraints
-    cardWidth = Math.max(
-      breakpoint.minCardSize,
-      Math.min(breakpoint.maxCardSize, cardWidth),
-    );
-    cardHeight = cardWidth * breakpoint.cardAspectRatio;
+    // Apply maximum size constraint from breakpoint (optional limit)
+    if (breakpoint.cardSize && finalWidth > breakpoint.cardSize) {
+      finalWidth = breakpoint.cardSize;
+      finalHeight = finalWidth * breakpoint.cardAspectRatio;
+    }
 
-    // Ensure minimum touch target size on mobile (44px as per iOS guidelines)
+    // Ensure minimum touch target size on mobile
     if (breakpoint.name === "mobile") {
       const minTouchSize = 44;
-      if (cardWidth < minTouchSize) {
-        cardWidth = minTouchSize;
-        cardHeight = cardWidth * breakpoint.cardAspectRatio;
+      if (finalWidth < minTouchSize) {
+        finalWidth = minTouchSize;
+        finalHeight = finalWidth * breakpoint.cardAspectRatio;
       }
     }
 
     return {
-      width: Math.round(cardWidth),
-      height: Math.round(cardHeight),
+      width: Math.round(finalWidth),
+      height: Math.round(finalHeight),
     };
   };
 
@@ -263,14 +281,20 @@ export const useCanvasLayout = () => {
   const setDefaultLayout = (difficulty: DifficultyLevel): void => {
     const defaultBreakpoint = BREAKPOINTS.find((bp) => bp.name === "desktop")!;
 
+    // STEP 1: Calculate total number of cards
+    const totalCards = difficulty.gridSize.rows * difficulty.gridSize.cols;
+
     layoutConfig.gridLayout = {
       rows: difficulty.gridSize.rows,
       cols: difficulty.gridSize.cols,
     };
 
-    layoutConfig.cardSize = {
-      width: defaultBreakpoint.maxCardSize,
-      height: defaultBreakpoint.maxCardSize * defaultBreakpoint.cardAspectRatio,
+    // STEP 2: Set padding and spacing first
+    layoutConfig.padding = {
+      top: 16,
+      right: 16,
+      bottom: 16,
+      left: 16,
     };
 
     layoutConfig.spacing = {
@@ -278,26 +302,49 @@ export const useCanvasLayout = () => {
       vertical: defaultBreakpoint.spacing,
     };
 
-    layoutConfig.padding = {
-      top: defaultBreakpoint.padding,
-      right: defaultBreakpoint.padding,
-      bottom: defaultBreakpoint.padding,
-      left: defaultBreakpoint.padding,
-    };
+    // STEP 3: Use reasonable default container size for desktop
+    const defaultContainerWidth = 1200;
+    const defaultContainerHeight = 800;
 
-    const totalWidth =
-      layoutConfig.padding.left +
-      layoutConfig.padding.right +
-      layoutConfig.cardSize.width * difficulty.gridSize.cols +
-      layoutConfig.spacing.horizontal * (difficulty.gridSize.cols - 1);
+    // Calculate available board space
+    const availableBoardWidth = defaultContainerWidth - 32; // 16px padding on each side
+    const availableBoardHeight = defaultContainerHeight - 32; // 16px padding on each side
 
-    const totalHeight =
-      layoutConfig.padding.top +
-      layoutConfig.padding.bottom +
-      layoutConfig.cardSize.height * difficulty.gridSize.rows +
-      layoutConfig.spacing.vertical * (difficulty.gridSize.rows - 1);
+    // STEP 4: Calculate optimal card size based on board space and grid layout
+    const cardSize = calculateOptimalCardSizeFromGrid(
+      availableBoardWidth,
+      availableBoardHeight,
+      difficulty.gridSize,
+      defaultBreakpoint
+    );
 
-    layoutConfig.canvasSize = { width: totalWidth, height: totalHeight };
+    layoutConfig.cardSize = cardSize;
+
+    // STEP 5: Calculate optimal canvas size based on card layout requirements
+    const optimalCanvasSize = calculateOptimalCanvasSize(
+      layoutConfig.cardSize,
+      layoutConfig.gridLayout,
+      layoutConfig.spacing,
+      layoutConfig.padding
+    );
+
+    layoutConfig.canvasSize = optimalCanvasSize;
+
+    console.log("Default layout set (board-based card sizing):", {
+      difficulty: difficulty.name,
+      totalCards,
+      defaultContainerSize: {
+        width: defaultContainerWidth,
+        height: defaultContainerHeight,
+      },
+      availableBoardSize: {
+        width: availableBoardWidth,
+        height: availableBoardHeight,
+      },
+      calculatedCardSize: layoutConfig.cardSize,
+      optimalCanvasSize,
+      gridLayout: layoutConfig.gridLayout,
+    });
   };
 
   /**
@@ -308,11 +355,11 @@ export const useCanvasLayout = () => {
     const col = cardIndex % layoutConfig.gridLayout.cols;
 
     const x =
-      layoutConfig.padding.left +
+      16 + // Fixed 16px left padding
       col * (layoutConfig.cardSize.width + layoutConfig.spacing.horizontal);
 
     const y =
-      layoutConfig.padding.top +
+      16 + // Fixed 16px top padding
       row * (layoutConfig.cardSize.height + layoutConfig.spacing.vertical);
 
     return { x, y };
@@ -323,11 +370,11 @@ export const useCanvasLayout = () => {
    */
   const getCardIndexAtPosition = (
     canvasX: number,
-    canvasY: number,
+    canvasY: number
   ): number | null => {
-    // Adjust for padding
-    const relativeX = canvasX - layoutConfig.padding.left;
-    const relativeY = canvasY - layoutConfig.padding.top;
+    // Adjust for fixed 16px padding
+    const relativeX = canvasX - 16;
+    const relativeY = canvasY - 16;
 
     // Check if click is within the grid area
     if (relativeX < 0 || relativeY < 0) return null;

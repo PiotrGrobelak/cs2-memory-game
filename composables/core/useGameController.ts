@@ -52,6 +52,19 @@ export const useGameController = () => {
     hasUnsavedChanges: false,
   });
 
+  // Track saved game state for UI decisions
+  const savedGameInfo = ref<{
+    exists: boolean;
+    wasPlaying: boolean;
+    difficulty: string;
+    progress: number;
+  }>({
+    exists: false,
+    wasPlaying: false,
+    difficulty: "",
+    progress: 0,
+  });
+
   // Computed properties
   const isReady = computed(() => {
     return (
@@ -69,10 +82,14 @@ export const useGameController = () => {
 
   const gameStatus = computed(() => {
     if (state.value.isInitializing) return "initializing";
-    if (!isReady.value) return "loading";
+    if (state.value.error) return "error";
     if (game.isGameComplete.value) return "completed";
     if (game.isPlaying.value) return "playing";
     return "ready";
+  });
+
+  const canContinueSavedGame = computed(() => {
+    return savedGameInfo.value.exists && gameStatus.value === "ready";
   });
 
   // Auto-save functionality
@@ -116,13 +133,32 @@ export const useGameController = () => {
       const savedGameState = await persistence.loadGameState();
 
       if (savedGameState && !options.seed) {
-        // Continue existing game
+        // Update saved game info for UI
+        savedGameInfo.value = {
+          exists: true,
+          wasPlaying: savedGameState.isPlaying,
+          difficulty: savedGameState.difficulty.name,
+          progress:
+            (savedGameState.stats.matchesFound /
+              savedGameState.stats.totalPairs) *
+            100,
+        };
+
+        // Restore existing game but don't auto-start it
         state.value.initializationStep = "Restoring saved game...";
-        await restoreGameState(savedGameState);
+        await restoreGameStateWithoutAutoStart(savedGameState);
       } else {
-        // Start new game
-        state.value.initializationStep = "Starting new game...";
-        await startNewGame(finalOptions);
+        // No saved game exists
+        savedGameInfo.value = {
+          exists: false,
+          wasPlaying: false,
+          difficulty: "",
+          progress: 0,
+        };
+
+        // Prepare new game but don't auto-start it
+        state.value.initializationStep = "Preparing new game...";
+        await prepareNewGame(finalOptions);
       }
 
       // Step 5: Save current options
@@ -175,6 +211,40 @@ export const useGameController = () => {
     state.value.hasUnsavedChanges = false;
   };
 
+  const prepareNewGame = async (options: GameOptions): Promise<void> => {
+    // Set seed if provided, otherwise use current one
+    if (options.seed) {
+      const seedSet = seedSystem.setCustomSeed(options.seed);
+      if (!seedSet) {
+        throw new Error("Invalid seed provided");
+      }
+    }
+
+    // Get CS2 items for the game using the current seed
+    const requiredItemCount = getDifficultyItemCount(options.difficulty);
+
+    const gameItems = cs2Data.getItemsForGame(
+      requiredItemCount,
+      seedSystem.state.value.currentSeed
+    );
+
+    if (gameItems.length < requiredItemCount) {
+      throw new Error(
+        `Not enough CS2 items available. Required: ${requiredItemCount}, Available: ${gameItems.length}`
+      );
+    }
+
+    // Initialize the game with these items but don't start it
+    await game.initializeNewGame(options);
+
+    // Set the CS2 items in the cards store
+    cardsStore.setCS2Items(gameItems);
+
+    // Clear any previous save
+    await persistence.deleteGameState();
+    state.value.hasUnsavedChanges = false;
+  };
+
   const restoreGameState = async (gameState: GameState): Promise<void> => {
     // Validate game state
     if (!gameState.seed) {
@@ -202,6 +272,38 @@ export const useGameController = () => {
     if (gameState.isPlaying) {
       game.resumeGame();
     }
+
+    state.value.hasUnsavedChanges = false;
+  };
+
+  const restoreGameStateWithoutAutoStart = async (
+    gameState: GameState
+  ): Promise<void> => {
+    // Validate game state
+    if (!gameState.seed) {
+      console.warn("GameState has no seed, generating a new one");
+      seedSystem.setRandomSeed();
+    } else {
+      // Restore seed
+      const success = seedSystem.setSeed(gameState.seed, true);
+      if (!success) {
+        console.warn("Failed to set saved seed, generating a new one");
+        seedSystem.setRandomSeed();
+      }
+    }
+
+    // Restore game state
+    await game.initializeNewGame({
+      difficulty: gameState.difficulty.name,
+      seed: seedSystem.state.value.currentSeed, // Use current seed instead of gameState.seed
+    });
+
+    // Restore cards and game progress
+    cardsStore.restoreState(gameState.cards);
+    coreStore.restoreStats(gameState.stats);
+
+    // Don't auto-resume the game, let the user decide
+    // Note: Game will be in 'ready' state and user can click "Continue Game" or "Start Game"
 
     state.value.hasUnsavedChanges = false;
   };
@@ -264,6 +366,33 @@ export const useGameController = () => {
     };
 
     await startNewGame(currentOptions);
+  };
+
+  const continueSavedGame = async (): Promise<boolean> => {
+    try {
+      if (!canContinueSavedGame.value) {
+        throw new Error("No saved game available to continue");
+      }
+
+      // Load the saved game state
+      const savedGameState = await persistence.loadGameState();
+      if (!savedGameState) {
+        throw new Error("Saved game state not found");
+      }
+
+      // If the saved game was in playing state, resume it
+      if (savedGameState.isPlaying) {
+        game.resumeGame();
+      } else {
+        // If it was paused, just start the game
+        game.startGame();
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Failed to continue saved game:", error);
+      return false;
+    }
   };
 
   const newGameWithSeed = async (
@@ -371,6 +500,7 @@ export const useGameController = () => {
     gameProgress,
     gameStatus,
     shouldAutoSave,
+    canContinueSavedGame,
 
     // Game state from orchestrated systems
     game,
@@ -385,6 +515,7 @@ export const useGameController = () => {
     saveGame,
     completeGame,
     restartGame,
+    continueSavedGame,
     newGameWithSeed,
     shareCurrentGame,
     clearAllData,

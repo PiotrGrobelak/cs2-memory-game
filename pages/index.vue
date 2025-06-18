@@ -259,20 +259,32 @@ if (typeof window !== "undefined") {
 // Global error handler
 if (typeof window !== "undefined") {
   window.addEventListener("error", (event) => {
-    console.error("Global error:", event.error);
+    // Handle cases where event.error might be null
+    const error = event.error || new Error("Unknown error occurred");
+    console.error("Global error:", error);
+
+    // Only show error UI if we don't already have an error state
     if (!hasError.value) {
       hasError.value = true;
       errorMessage.value =
+        error.message ||
         "An unexpected error occurred. Please refresh the page.";
     }
   });
 
   window.addEventListener("unhandledrejection", (event) => {
-    console.error("Unhandled promise rejection:", event.reason);
+    // Handle promise rejections more gracefully
+    const reason = event.reason || "Unknown rejection reason";
+    console.error("Unhandled promise rejection:", reason);
+
+    // Only show error UI if we don't already have an error state
     if (!hasError.value) {
       hasError.value = true;
       errorMessage.value =
-        "An unexpected error occurred. Please refresh the page.";
+        typeof reason === "string"
+          ? reason
+          : reason?.message ||
+            "An unexpected error occurred. Please refresh the page.";
     }
   });
 }

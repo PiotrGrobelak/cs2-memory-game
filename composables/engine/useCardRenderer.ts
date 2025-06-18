@@ -177,6 +177,24 @@ export const useCardRenderer = () => {
 
     ctx.save();
 
+    // Preload image immediately when card is first rendered (regardless of state)
+    if (
+      !imageLoader.isImageLoaded(card.cs2Item.imageUrl) &&
+      !imageLoader.isImageLoading(card.cs2Item.imageUrl)
+    ) {
+      imageLoader
+        .loadImage(card.cs2Item.imageUrl, {
+          crossOrigin: "anonymous",
+          timeout: 10000, // 10 second timeout
+        })
+        .catch((error) => {
+          console.warn(
+            `Failed to preload weapon image for ${card.cs2Item.name}:`,
+            error
+          );
+        });
+    }
+
     // Apply transforms
     applyCardTransforms(ctx, position, size, visualState);
 
@@ -185,7 +203,7 @@ export const useCardRenderer = () => {
       card.state === "hidden" ||
       (visualState.isFlipping && visualState.flipProgress < 0.5)
     ) {
-      renderCardBack(ctx, size, card.cs2Item.rarity, timestamp);
+      renderCardBack(ctx, size, card.cs2Item.rarity, timestamp, card.id);
     } else {
       renderCardFront(ctx, card, size, timestamp);
     }
@@ -241,7 +259,8 @@ export const useCardRenderer = () => {
     ctx: CanvasRenderingContext2D,
     size: { width: number; height: number },
     rarity: ItemRarity,
-    timestamp: number
+    timestamp: number,
+    cardId: string
   ): void => {
     // Draw background with animated rarity gradient
     drawRarityBackground(ctx, 0, 0, size.width, size.height, rarity, timestamp);
@@ -251,6 +270,9 @@ export const useCardRenderer = () => {
 
     // Draw CS2 logo
     drawCS2Logo(ctx, size);
+
+    // Draw card ID for debugging
+    drawCardId(ctx, cardId, size, "back");
 
     // Draw border
     drawCardBorder(ctx, 0, 0, size.width, size.height, rarity, false);
@@ -284,6 +306,9 @@ export const useCardRenderer = () => {
 
     // Draw rarity indicator
     drawRarityIndicator(ctx, card.cs2Item.rarity, size);
+
+    // Draw card ID for debugging
+    drawCardId(ctx, card.id, size, "front");
 
     // Draw border (highlighted for revealed/matched)
     const isHighlighted = card.state === "revealed" || card.state === "matched";
@@ -513,21 +538,6 @@ export const useCardRenderer = () => {
       }
 
       ctx.fillText(icon, imageX + imageSize / 2, imageY + imageSize / 2);
-
-      // Try to load the image if it's not already failed
-      if (!imageLoader.isImageLoaded(card.cs2Item.imageUrl)) {
-        imageLoader
-          .loadImage(card.cs2Item.imageUrl, {
-            crossOrigin: "anonymous",
-            timeout: 10000, // 10 second timeout
-          })
-          .catch((error) => {
-            console.warn(
-              `Failed to load weapon image for ${card.cs2Item.name}:`,
-              error
-            );
-          });
-      }
     }
   };
 
@@ -790,6 +800,43 @@ export const useCardRenderer = () => {
       renderStats.cacheHits /
         (renderStats.cacheHits + renderStats.cacheMisses) || 0,
   });
+
+  /**
+   * Draw card ID for debugging purposes
+   */
+  const drawCardId = (
+    ctx: CanvasRenderingContext2D,
+    cardId: string,
+    size: { width: number; height: number },
+    side: "front" | "back"
+  ): void => {
+    ctx.save();
+
+    // Position at bottom of card
+    const x = size.width / 2;
+    const y = size.height - 4;
+
+    // Set smaller text style
+    ctx.fillStyle = side === "back" ? "#ffffff" : "#000000";
+    ctx.font = "8px monospace"; // Reduced from 10px to 8px
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+
+    // Add background for better readability (smaller)
+    const text = `${cardId.substring(0)}`; // Show chars after first 4
+    const textMetrics = ctx.measureText(text);
+    const bgWidth = textMetrics.width + 4; // Reduced padding
+    const bgHeight = 10; // Reduced height
+
+    ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; // More transparent
+    ctx.fillRect(x - bgWidth / 2, y - bgHeight, bgWidth, bgHeight);
+
+    // Draw text
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(text, x, y - 1);
+
+    ctx.restore();
+  };
 
   return {
     // Configuration

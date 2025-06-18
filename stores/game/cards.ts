@@ -8,6 +8,7 @@ import type {
   ItemCategory,
 } from "~/types/game";
 import cs2ApiService from "~/services/cs2ApiService";
+import { imageLoader } from "~/services/ImageLoader";
 
 export const useGameCardsStore = defineStore("game-cards", () => {
   // State
@@ -37,12 +38,36 @@ export const useGameCardsStore = defineStore("game-cards", () => {
   // Actions
   const selectCard = (cardId: string): boolean => {
     const card = cards.value.find((c) => c.id === cardId);
+
+    console.log(`🎯 selectCard called for ${cardId}`, {
+      cardExists: !!card,
+      cardState: card?.state,
+      selectedCount: selectedCards.value.length,
+      selectedCards: selectedCards.value.map((id) => id),
+      revealedCount: revealedCards.value.length,
+      revealedCards: revealedCards.value.map((c) => ({
+        id: c.id,
+        state: c.state,
+      })),
+    });
+
     // Don't allow selection if card doesn't exist, is already revealed, or is matched
     if (!card) {
+      console.log(`❌ Card ${cardId} not found`);
       return false;
     }
 
     if (card.state !== "hidden") {
+      console.log(`❌ Card ${cardId} not hidden (state: ${card.state})`);
+      return false;
+    }
+
+    // Don't allow new selections if 2 cards are already selected (not revealed!)
+    if (selectedCards.value.length >= 2) {
+      console.log(
+        `❌ Too many selected cards (${selectedCards.value.length}):`,
+        selectedCards.value
+      );
       return false;
     }
 
@@ -50,18 +75,44 @@ export const useGameCardsStore = defineStore("game-cards", () => {
     card.state = "revealed";
     selectedCards.value.push(cardId);
 
+    console.log("🔍 Revealed card state:", card.state);
+
+    console.log(`✅ Card ${cardId} selected and revealed`, {
+      newSelectedCount: selectedCards.value.length,
+      newRevealedCount: revealedCards.value.length,
+      selectedCards: selectedCards.value,
+      selectedCardsLength: selectedCards.value.length,
+      selectedCardsArray: [...selectedCards.value], // Force array expansion
+    });
+
     return true;
   };
 
   const checkForMatch = (): boolean => {
+    console.log(`🔍 checkForMatch called`, {
+      selectedCount: selectedCards.value.length,
+      selectedCards: selectedCards.value,
+      revealedCount: revealedCards.value.length,
+      revealedCardIds: revealedCards.value.map((c) => c.id),
+    });
+
     // Only proceed if exactly 2 cards are selected
-    if (selectedCards.value.length !== 2) return false;
+    if (selectedCards.value.length !== 2) {
+      console.log(
+        `❌ Wrong number of selected cards: ${selectedCards.value.length}`
+      );
+      return false;
+    }
 
     const [firstCardId, secondCardId] = selectedCards.value;
     const firstCard = cards.value.find((c) => c.id === firstCardId);
     const secondCard = cards.value.find((c) => c.id === secondCardId);
 
     if (!firstCard || !secondCard) {
+      console.log(`❌ Cards not found:`, {
+        firstCard: !!firstCard,
+        secondCard: !!secondCard,
+      });
       // Clear selection if cards not found
       selectedCards.value = [];
       return false;
@@ -69,20 +120,46 @@ export const useGameCardsStore = defineStore("game-cards", () => {
 
     const isMatch = firstCard.pairId === secondCard.pairId;
 
+    console.log(`🎮 Match check result:`, {
+      firstCard: { id: firstCard.id, pairId: firstCard.pairId },
+      secondCard: { id: secondCard.id, pairId: secondCard.pairId },
+      isMatch,
+    });
+
     if (isMatch) {
       // Match found
       firstCard.state = "matched";
       secondCard.state = "matched";
+      console.log(
+        `✅ Match found! Cards ${firstCard.id} and ${secondCard.id} matched`
+      );
     } else {
-      // No match - schedule hiding cards
+      // No match - schedule hiding cards after 1 second
+      console.log(
+        `❌ No match - scheduling hide for cards ${firstCard.id} and ${secondCard.id} in 1000ms`
+      );
       setTimeout(() => {
-        firstCard.state = "hidden";
-        secondCard.state = "hidden";
+        console.log(
+          `⏰ Hiding non-matched cards ${firstCard.id} and ${secondCard.id}`
+        );
+        // Check if cards are still in revealed state before hiding
+        if (firstCard.state === "revealed") {
+          firstCard.state = "hidden";
+          console.log(`🔄 Card ${firstCard.id} hidden`);
+        }
+        if (secondCard.state === "revealed") {
+          secondCard.state = "hidden";
+          console.log(`🔄 Card ${secondCard.id} hidden`);
+        }
+        console.log(
+          `🔄 Cards hiding complete, current revealed count: ${revealedCards.value.length}`
+        );
       }, 1000);
     }
 
-    // Clear selected cards
+    // Clear selected cards immediately after processing
     selectedCards.value = [];
+    console.log(`🧹 Selected cards cleared, can now select new cards`);
     return isMatch;
   };
 
@@ -184,6 +261,11 @@ export const useGameCardsStore = defineStore("game-cards", () => {
     console.log(
       `Generated ${newCards.length} cards (${selectedItems.length} pairs) with ${selectedItems.filter((item) => !item.id.startsWith("placeholder")).length} real CS2 items`
     );
+
+    // Preload images for all cards
+    newCards.forEach((card) => {
+      imageLoader.loadImage(card.cs2Item.imageUrl);
+    });
   };
 
   const resetCards = (): void => {
@@ -384,11 +466,13 @@ export const useGameCardsStore = defineStore("game-cards", () => {
 
     // Maintain current shuffle if cards exist, otherwise shuffle new cards
     if (cards.value.length > 0 && newCards.length === cards.value.length) {
-      // Update existing cards with new CS2 items while maintaining positions
+      // Update existing cards with new CS2 items while maintaining positions and pairIds
+      // DO NOT overwrite pairId - it would break the card pairing logic!
       cards.value.forEach((existingCard, index) => {
         if (newCards[index]) {
           existingCard.cs2Item = newCards[index].cs2Item;
-          existingCard.pairId = newCards[index].pairId;
+          // Keep existing pairId - DO NOT overwrite it!
+          // existingCard.pairId = newCards[index].pairId; // ← REMOVED: This was corrupting pairIds
         }
       });
     } else {
