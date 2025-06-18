@@ -15,7 +15,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, useTemplateRef, onMounted } from "vue";
+import { ref, computed, useTemplateRef, onMounted, onUnmounted } from "vue";
 import { useGameEngine } from "~/composables/engine/useGameEngine";
 import { useCanvasLayout } from "~/composables/engine/useCanvasLayout";
 import { useGameCoreStore } from "~/stores/game/core";
@@ -160,6 +160,14 @@ async function initializeCanvas() {
 // Initialize canvas layout on mount
 onMounted(() => {
   initializeCanvas();
+});
+
+// Cleanup on unmount
+onUnmounted(() => {
+  if (gameEngine.state.isRunning) {
+    gameEngine.stop();
+    console.log("Game engine stopped on component unmount");
+  }
 });
 
 // Expose canvas methods for parent components

@@ -50,9 +50,18 @@ const props = defineProps<Props>();
 
 // Computed
 const formattedTime = computed(() => {
-  const seconds = Math.floor(props.timeElapsed);
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
+  // Convert milliseconds to seconds
+  const totalSeconds = Math.floor(props.timeElapsed / 1000);
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  // Show hours only if the game has been running for more than an hour
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+  } else {
+    return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+  }
 });
 </script>

@@ -94,6 +94,9 @@ export const useGameEngine = () => {
   // Animation frame ID for cleanup
   let animationFrameId: number | null = null;
 
+  // Dirty flag for rendering optimization
+  let isDirty = true;
+
   /**
    * Initialize the game engine with Canvas element
    */
@@ -180,11 +183,14 @@ export const useGameEngine = () => {
       state.fps = Math.round(1000 / deltaTime);
     }
 
-    // Update game objects
-    update(deltaTime);
+    // Update game objects and check if anything changed
+    const hasChanges = update(deltaTime);
 
-    // Render frame
-    render();
+    // Only render if there are changes or forced dirty flag
+    if (isDirty || hasChanges) {
+      render();
+      isDirty = false;
+    }
 
     // Schedule next frame
     animationFrameId = requestAnimationFrame(gameLoop);
@@ -193,16 +199,27 @@ export const useGameEngine = () => {
   /**
    * Update game objects
    */
-  const update = (deltaTime: number): void => {
+  const update = (deltaTime: number): boolean => {
+    let hasChanges = false;
+
     // Update card animations
     for (const [_cardId, renderData] of cardRenderData.value) {
-      updateCardAnimation(renderData, deltaTime);
+      if (renderData.isFlipping) {
+        updateCardAnimation(renderData, deltaTime);
+        hasChanges = true;
+      }
     }
 
     // Update canvas objects
     for (const [_objectId, object] of canvasObjects.value) {
       updateCanvasObject(object, deltaTime);
+      // Parallax effects always cause changes
+      if (object.type === "card") {
+        hasChanges = true;
+      }
     }
+
+    return hasChanges;
   };
 
   /**
@@ -542,6 +559,7 @@ export const useGameEngine = () => {
    */
   const setParallaxOffset = (offset: { x: number; y: number }): void => {
     state.parallaxOffset = offset;
+    isDirty = true; // Mark for re-render
   };
 
   /**
@@ -569,6 +587,7 @@ export const useGameEngine = () => {
    */
   const addCanvasObject = (id: string, object: CanvasObject): void => {
     canvasObjects.value.set(id, object);
+    isDirty = true; // Mark for re-render
   };
 
   /**
@@ -577,6 +596,7 @@ export const useGameEngine = () => {
   const removeCanvasObject = (id: string): void => {
     canvasObjects.value.delete(id);
     cardRenderData.value.delete(id);
+    isDirty = true; // Mark for re-render
   };
 
   /**
@@ -598,6 +618,14 @@ export const useGameEngine = () => {
         ...data,
       } as CardRenderData);
     }
+    isDirty = true; // Mark for re-render
+  };
+
+  /**
+   * Mark scene as dirty to force re-render
+   */
+  const markDirty = (): void => {
+    isDirty = true;
   };
 
   return {
@@ -618,5 +646,8 @@ export const useGameEngine = () => {
     addCanvasObject,
     removeCanvasObject,
     updateCardRenderData,
+
+    // Rendering optimization
+    markDirty,
   };
 };
