@@ -19,6 +19,7 @@
  */
 import { ref, reactive } from "vue";
 import type { GameCard, ItemRarity } from "~/types/game";
+import { imageLoader } from "~/services/ImageLoader";
 
 // Card rendering configuration
 interface CardRenderConfig {
@@ -416,7 +417,7 @@ export const useCardRenderer = () => {
   };
 
   /**
-   * Draw item content area
+   * Draw item content area with actual CS2 weapon image
    */
   const drawItemContent = (
     ctx: CanvasRenderingContext2D,
@@ -434,22 +435,100 @@ export const useCardRenderer = () => {
     drawRoundedRect(ctx, contentX, contentY, contentWidth, contentHeight, 4);
     ctx.fill();
 
-    // For now, draw placeholder item image
-    // TODO: Replace with actual CS2 item image rendering
-    ctx.fillStyle = "#34495e";
+    // Calculate image dimensions
     const imageSize = Math.min(contentWidth, contentHeight) * 0.8;
     const imageX = contentX + (contentWidth - imageSize) / 2;
     const imageY = contentY + (contentHeight - imageSize) / 2;
 
-    drawRoundedRect(ctx, imageX, imageY, imageSize, imageSize, 4);
-    ctx.fill();
+    // Try to get the weapon image
+    const weaponImage = imageLoader.getCachedImage(card.cs2Item.imageUrl);
 
-    // Draw placeholder item icon
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `${imageSize * 0.3}px Arial`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("🔫", imageX + imageSize / 2, imageY + imageSize / 2);
+    if (weaponImage) {
+      // Draw the actual weapon image
+      ctx.save();
+
+      // Create clipping path for rounded corners
+      ctx.beginPath();
+      ctx.roundRect(imageX, imageY, imageSize, imageSize, 4);
+      ctx.clip();
+
+      // Calculate scaling to fit image while maintaining aspect ratio
+      const scale = Math.min(
+        imageSize / weaponImage.width,
+        imageSize / weaponImage.height
+      );
+
+      const scaledWidth = weaponImage.width * scale;
+      const scaledHeight = weaponImage.height * scale;
+
+      // Center the scaled image
+      const drawX = imageX + (imageSize - scaledWidth) / 2;
+      const drawY = imageY + (imageSize - scaledHeight) / 2;
+
+      // Draw the weapon image
+      ctx.drawImage(weaponImage, drawX, drawY, scaledWidth, scaledHeight);
+
+      ctx.restore();
+    } else if (imageLoader.isImageLoading(card.cs2Item.imageUrl)) {
+      // Show loading state
+      ctx.fillStyle = "#34495e";
+      drawRoundedRect(ctx, imageX, imageY, imageSize, imageSize, 4);
+      ctx.fill();
+
+      // Draw loading indicator (spinning circle)
+      const centerX = imageX + imageSize / 2;
+      const centerY = imageY + imageSize / 2;
+      const radius = imageSize * 0.1;
+
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 1.5);
+      ctx.stroke();
+
+      // Draw loading text
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `${imageSize * 0.08}px Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("Loading...", centerX, centerY + radius + 15);
+    } else {
+      // Show placeholder or error state
+      ctx.fillStyle = "#34495e";
+      drawRoundedRect(ctx, imageX, imageY, imageSize, imageSize, 4);
+      ctx.fill();
+
+      // Draw placeholder weapon icon
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `${imageSize * 0.3}px Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      // Choose icon based on weapon category
+      let icon = "🔫"; // Default weapon icon
+      if (card.cs2Item.category === "knife") {
+        icon = "🗡️";
+      } else if (card.cs2Item.category === "glove") {
+        icon = "🧤";
+      }
+
+      ctx.fillText(icon, imageX + imageSize / 2, imageY + imageSize / 2);
+
+      // Try to load the image if it's not already failed
+      if (!imageLoader.isImageLoaded(card.cs2Item.imageUrl)) {
+        imageLoader
+          .loadImage(card.cs2Item.imageUrl, {
+            crossOrigin: "anonymous",
+            timeout: 10000, // 10 second timeout
+          })
+          .catch((error) => {
+            console.warn(
+              `Failed to load weapon image for ${card.cs2Item.name}:`,
+              error
+            );
+          });
+      }
+    }
   };
 
   /**

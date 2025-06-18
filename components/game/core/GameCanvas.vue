@@ -135,26 +135,64 @@ async function initializeCanvas() {
   }
 
   try {
-    // Initialize canvas layout
-    if (gameStore.difficulty) {
-      canvasLayout.calculateLayout(gameStore.difficulty);
-    }
-
-    // Update container size for layout calculations
+    // Update container size for layout calculations first
     const rect = containerRef.value.getBoundingClientRect();
     canvasLayout.updateContainerSize(rect.width, rect.height);
 
-    // Initialize game engine
+    // Initialize canvas layout with current difficulty
+    if (gameStore.difficulty) {
+      canvasLayout.calculateLayout(gameStore.difficulty);
+      console.log("Canvas layout calculated:", {
+        difficulty: gameStore.difficulty.name,
+        canvasSize: canvasLayout.canvasSize.value,
+        cardSize: canvasLayout.cardSize.value,
+      });
+    }
+
+    // Initialize game engine with calculated canvas size
     await gameEngine.init(canvasElement.value);
+
+    // Set up canvas objects for cards
+    setupCardObjects();
+
+    // Start the game engine
     gameEngine.start();
 
     // Initialize game sync
     gameSync.initializeSync();
 
     isInitialized.value = true;
+    console.log("Game canvas initialized successfully");
   } catch (error) {
     console.error("Failed to initialize game canvas:", error);
   }
+}
+
+// Setup canvas objects for cards
+function setupCardObjects() {
+  const cards = cardsStore.cards;
+
+  cards.forEach((card, index) => {
+    const position = canvasLayout.getCardPosition(index);
+    const size = canvasLayout.cardSize.value;
+
+    const canvasObject = {
+      id: card.id,
+      type: "card" as const,
+      position,
+      size,
+      visible: true,
+      zIndex: 1,
+      data: {
+        card,
+        parallaxOffset: { x: 0, y: 0 },
+      },
+    };
+
+    gameEngine.addCanvasObject(card.id, canvasObject);
+  });
+
+  console.log(`Set up ${cards.length} card objects for rendering`);
 }
 
 // Initialize canvas layout on mount

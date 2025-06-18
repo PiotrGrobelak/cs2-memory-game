@@ -1,6 +1,13 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import type { GameCard, DifficultyLevel, CS2Item } from "~/types/game";
+import type {
+  GameCard,
+  DifficultyLevel,
+  CS2Item,
+  ItemRarity,
+  ItemCategory,
+} from "~/types/game";
+import cs2ApiService from "~/services/cs2ApiService";
 
 export const useGameCardsStore = defineStore("game-cards", () => {
   // State
@@ -79,11 +86,11 @@ export const useGameCardsStore = defineStore("game-cards", () => {
     return isMatch;
   };
 
-  const generateCards = (
+  const generateCards = async (
     difficulty: DifficultyLevel,
     seed: string,
-    _cs2Items: CS2Item[] = []
-  ): void => {
+    cs2Items: CS2Item[] = []
+  ): Promise<void> => {
     // Reset cards
     cards.value = [];
     selectedCards.value = [];
@@ -94,21 +101,64 @@ export const useGameCardsStore = defineStore("game-cards", () => {
       return;
     }
 
-    // For now, create placeholder cards until CS2 items are implemented
     const cardPairs = difficulty.cardCount / 2;
+    let availableItems: CS2Item[] = [];
+
+    // Try to get CS2 items from API if not provided
+    if (cs2Items.length === 0) {
+      try {
+        console.log("Fetching CS2 items for card generation...");
+        availableItems = await cs2ApiService.getCS2Items(cardPairs * 2); // Get more items than needed for variety
+        console.log(`Fetched ${availableItems.length} CS2 items for cards`);
+      } catch (error) {
+        console.warn("Failed to fetch CS2 items, using placeholders:", error);
+        availableItems = [];
+      }
+    } else {
+      availableItems = cs2Items;
+    }
+
+    // If we don't have enough items, create placeholders
+    if (availableItems.length < cardPairs) {
+      console.log(
+        `Need ${cardPairs} items but only have ${availableItems.length}, creating placeholders`
+      );
+
+      const placeholderCount = cardPairs - availableItems.length;
+      const rarities: ItemRarity[] = [
+        "consumer",
+        "industrial",
+        "milSpec",
+        "restricted",
+        "classified",
+        "covert",
+        "contraband",
+      ];
+      const categories: ItemCategory[] = ["weapon", "knife", "glove"];
+
+      for (let i = 0; i < placeholderCount; i++) {
+        const placeholderItem: CS2Item = {
+          id: `placeholder-${i}`,
+          name: `CS2 Item ${availableItems.length + i + 1}`,
+          imageUrl: `/placeholder-${i}.jpg`,
+          rarity: rarities[i % rarities.length],
+          category: categories[i % categories.length],
+          collection: "Placeholder Collection",
+          exterior: "Factory New",
+        };
+        availableItems.push(placeholderItem);
+      }
+    }
+
+    // Select items for this game (shuffle available items first)
+    const shuffledItems = [...availableItems].sort(() => Math.random() - 0.5);
+    const selectedItems = shuffledItems.slice(0, cardPairs);
+
     const newCards: GameCard[] = [];
 
-    for (let i = 0; i < cardPairs; i++) {
+    for (let i = 0; i < selectedItems.length; i++) {
+      const item = selectedItems[i];
       const pairId = `pair-${i}`;
-
-      // Create placeholder CS2 item
-      const placeholderItem: CS2Item = {
-        id: `item-${i}`,
-        name: `CS2 Item ${i + 1}`,
-        imageUrl: `/placeholder-${i}.jpg`,
-        rarity: "consumer",
-        category: "weapon",
-      };
 
       // Create two cards for each pair
       for (let j = 0; j < 2; j++) {
@@ -116,7 +166,7 @@ export const useGameCardsStore = defineStore("game-cards", () => {
         newCards.push({
           id: cardId,
           pairId,
-          cs2Item: placeholderItem,
+          cs2Item: item,
           state: "hidden",
           position: { x: 0, y: 0 }, // Will be set by layout logic
         });
@@ -124,12 +174,16 @@ export const useGameCardsStore = defineStore("game-cards", () => {
     }
 
     // Shuffle cards using seed-based randomization
-    shuffleCards(newCards, seed);
+    shuffleCards(newCards, seed, difficulty.gridSize);
 
     // Set positions based on grid
     setCardPositions(newCards, difficulty.gridSize);
 
     cards.value = newCards;
+
+    console.log(
+      `Generated ${newCards.length} cards (${selectedItems.length} pairs) with ${selectedItems.filter((item) => !item.id.startsWith("placeholder")).length} real CS2 items`
+    );
   };
 
   const resetCards = (): void => {
@@ -147,7 +201,11 @@ export const useGameCardsStore = defineStore("game-cards", () => {
   };
 
   // Helper functions
-  const shuffleCards = (cardsArray: GameCard[], seed: string): void => {
+  const shuffleCards = (
+    cardsArray: GameCard[],
+    seed: string,
+    gridSize: { rows: number; cols: number }
+  ): void => {
     // Enhanced seeded shuffle algorithm for maximum differentiation
     let currentIndex = cardsArray.length;
     let randomIndex: number;
@@ -184,23 +242,110 @@ export const useGameCardsStore = defineStore("game-cards", () => {
       random2 = (random2 * 16807 + 1) & 0x7fffffff;
     }
 
-    while (currentIndex > 0) {
-      // Use alternating generators for more randomness
-      if (currentIndex % 2 === 0) {
-        random1 = (random1 * 1103515245 + 12345) & 0x7fffffff;
-        randomIndex = random1 % currentIndex;
-      } else {
-        random2 = (random2 * 16807 + 1) & 0x7fffffff;
-        randomIndex = random2 % currentIndex;
+    // Multiple shuffle passes for better randomization
+    for (let pass = 0; pass < 3; pass++) {
+      currentIndex = cardsArray.length;
+
+      while (currentIndex > 0) {
+        // Use alternating generators for more randomness
+        if (currentIndex % 2 === 0) {
+          random1 = (random1 * 1103515245 + 12345) & 0x7fffffff;
+          randomIndex = random1 % currentIndex;
+        } else {
+          random2 = (random2 * 16807 + 1) & 0x7fffffff;
+          randomIndex = random2 % currentIndex;
+        }
+
+        currentIndex--;
+
+        // Swap with current element
+        [cardsArray[currentIndex], cardsArray[randomIndex]] = [
+          cardsArray[randomIndex],
+          cardsArray[currentIndex],
+        ];
+      }
+    }
+
+    // Validate and fix adjacent pairs if any exist
+    validateAndFixAdjacentPairs(cardsArray, seed, gridSize);
+  };
+
+  /**
+   * Validate that no pairs are adjacent and fix if necessary
+   */
+  const validateAndFixAdjacentPairs = (
+    cardsArray: GameCard[],
+    seed: string,
+    gridSize: { rows: number; cols: number }
+  ): void => {
+    const gridCols = gridSize.cols;
+    let attempts = 0;
+    const maxAttempts = 50; // Increase attempts for better success rate
+
+    // Create a seeded random number generator for consistent results
+    let random =
+      Math.abs(
+        seed.split("").reduce((a, b) => {
+          a = (a << 5) - a + b.charCodeAt(0);
+          return a & a;
+        }, 0)
+      ) || 1;
+
+    const seededRandom = () => {
+      random = (random * 9301 + 49297) % 233280;
+      return random / 233280;
+    };
+
+    while (attempts < maxAttempts) {
+      let hasAdjacentPairs = false;
+
+      // Check for adjacent pairs (horizontal and vertical)
+      for (let i = 0; i < cardsArray.length && !hasAdjacentPairs; i++) {
+        const currentCard = cardsArray[i];
+        const adjacentIndices: number[] = [];
+
+        // Horizontal adjacency
+        if (i % gridCols !== gridCols - 1 && i + 1 < cardsArray.length) {
+          adjacentIndices.push(i + 1); // Right
+        }
+        if (i % gridCols !== 0 && i - 1 >= 0) {
+          adjacentIndices.push(i - 1); // Left
+        }
+
+        // Vertical adjacency
+        if (i + gridCols < cardsArray.length) {
+          adjacentIndices.push(i + gridCols); // Down
+        }
+        if (i - gridCols >= 0) {
+          adjacentIndices.push(i - gridCols); // Up
+        }
+
+        // Check if any adjacent card has the same pairId
+        for (const adjIndex of adjacentIndices) {
+          if (cardsArray[adjIndex].pairId === currentCard.pairId) {
+            hasAdjacentPairs = true;
+            break;
+          }
+        }
       }
 
-      currentIndex--;
+      if (!hasAdjacentPairs) {
+        break; // No adjacent pairs found, we're done
+      }
 
-      // Swap with current element
-      [cardsArray[currentIndex], cardsArray[randomIndex]] = [
-        cardsArray[randomIndex],
-        cardsArray[currentIndex],
-      ];
+      // If we found adjacent pairs, do a random shuffle and try again
+      for (let i = cardsArray.length - 1; i > 0; i--) {
+        const j = Math.floor(seededRandom() * (i + 1));
+        [cardsArray[i], cardsArray[j]] = [cardsArray[j], cardsArray[i]];
+      }
+
+      attempts++;
+    }
+
+    if (attempts >= maxAttempts) {
+      console.warn(
+        `Could not eliminate all adjacent pairs after ${maxAttempts} attempts`
+      );
     }
   };
 
@@ -259,6 +404,89 @@ export const useGameCardsStore = defineStore("game-cards", () => {
     selectedCards.value = [];
   };
 
+  /**
+   * Debug utility: Check for adjacent pairs in current card layout
+   */
+  const debugCheckAdjacentPairs = (): {
+    hasAdjacent: boolean;
+    adjacentPairs: string[];
+  } => {
+    const adjacentPairs: string[] = [];
+
+    // Use correct grid dimensions based on actual card count
+    let gridCols: number;
+    if (cards.value.length === 12)
+      gridCols = 4; // 3x4
+    else if (cards.value.length === 24)
+      gridCols = 6; // 4x6
+    else if (cards.value.length === 48)
+      gridCols = 8; // 6x8
+    else gridCols = Math.ceil(Math.sqrt(cards.value.length)); // Fallback
+
+    for (let i = 0; i < cards.value.length; i++) {
+      const currentCard = cards.value[i];
+      const adjacentIndices: number[] = [];
+
+      // Horizontal adjacency (check bounds)
+      if (i % gridCols !== gridCols - 1 && i + 1 < cards.value.length) {
+        adjacentIndices.push(i + 1); // Right
+      }
+      if (i % gridCols !== 0 && i - 1 >= 0) {
+        adjacentIndices.push(i - 1); // Left
+      }
+
+      // Vertical adjacency (check bounds)
+      if (i + gridCols < cards.value.length) {
+        adjacentIndices.push(i + gridCols); // Down
+      }
+      if (i - gridCols >= 0) {
+        adjacentIndices.push(i - gridCols); // Up
+      }
+
+      // Check if any adjacent card has the same pairId
+      for (const adjIndex of adjacentIndices) {
+        // Double-check bounds to be safe
+        if (adjIndex >= 0 && adjIndex < cards.value.length) {
+          const adjacentCard = cards.value[adjIndex];
+          if (adjacentCard && adjacentCard.pairId === currentCard.pairId) {
+            adjacentPairs.push(
+              `${currentCard.pairId} at positions ${i} and ${adjIndex}`
+            );
+          }
+        }
+      }
+    }
+
+    return {
+      hasAdjacent: adjacentPairs.length > 0,
+      adjacentPairs,
+    };
+  };
+
+  /**
+   * Debug utility: Get card layout as grid for visualization
+   */
+  const debugGetCardGrid = (): string[][] => {
+    // Use correct grid dimensions based on actual card count
+    let gridCols: number;
+    if (cards.value.length === 12)
+      gridCols = 4; // 3x4
+    else if (cards.value.length === 24)
+      gridCols = 6; // 4x6
+    else if (cards.value.length === 48)
+      gridCols = 8; // 6x8
+    else gridCols = Math.ceil(Math.sqrt(cards.value.length)); // Fallback
+
+    const grid: string[][] = [];
+
+    for (let i = 0; i < cards.value.length; i += gridCols) {
+      const row = cards.value.slice(i, i + gridCols).map((card) => card.pairId);
+      grid.push(row);
+    }
+
+    return grid;
+  };
+
   return {
     // State
     cards,
@@ -278,5 +506,7 @@ export const useGameCardsStore = defineStore("game-cards", () => {
     hideAllRevealedCards,
     setCS2Items,
     restoreState,
+    debugCheckAdjacentPairs,
+    debugGetCardGrid,
   };
 });

@@ -66,8 +66,11 @@ export const useGame = () => {
     // Initialize core game state
     await coreStore.initializeGame(options);
 
-    // Generate cards with the new difficulty and seed
-    cardsStore.generateCards(coreStore.difficultySettings, coreStore.seed);
+    // Generate cards with the new difficulty and seed (now async)
+    await cardsStore.generateCards(
+      coreStore.difficultySettings,
+      coreStore.seed
+    );
 
     // Reset timer
     timerStore.resetTimer();

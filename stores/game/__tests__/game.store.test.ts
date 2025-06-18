@@ -1,8 +1,56 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { useGame } from "~/composables/core/useGame";
 import { useGameCoreStore } from "~/stores/game/core";
-import type { GameOptions } from "~/types/game";
+import type {
+  GameOptions,
+  CS2Item,
+  ItemRarity,
+  ItemCategory,
+} from "~/types/game";
+
+// Mock the cs2ApiService to prevent actual API calls during tests
+vi.mock("~/services/cs2ApiService", () => {
+  const rarities: ItemRarity[] = [
+    "consumer",
+    "industrial",
+    "milSpec",
+    "restricted",
+    "classified",
+    "covert",
+  ];
+  const categories: ItemCategory[] = ["weapon", "knife", "glove"];
+
+  const mockCS2Items: CS2Item[] = Array.from({ length: 50 }, (_, i) => ({
+    id: `mock-item-${i}`,
+    name: `Mock CS2 Item ${i + 1}`,
+    imageUrl: `/mock-image-${i}.jpg`,
+    rarity: rarities[i % 6],
+    category: categories[i % 3],
+    collection: "Mock Collection",
+    exterior: "Factory New",
+  }));
+
+  const mockService = {
+    getCS2Items: vi.fn().mockResolvedValue(mockCS2Items),
+    getCacheStatus: vi.fn().mockReturnValue({
+      hasCache: false,
+      isValid: false,
+      itemCount: 0,
+      age: 0,
+    }),
+    clearCache: vi.fn(),
+    getAvailableCategories: vi
+      .fn()
+      .mockResolvedValue(["weapon", "knife", "glove"]),
+    getItemsByCategory: vi.fn().mockResolvedValue(mockCS2Items.slice(0, 10)),
+  };
+
+  return {
+    cs2ApiService: mockService,
+    default: mockService,
+  };
+});
 
 describe("Game Composable", () => {
   beforeEach(() => {
@@ -104,7 +152,7 @@ describe("Game Composable", () => {
       // Find two cards with the same pairId
       const firstCard = game.cards.value[0];
       const matchingCard = game.cards.value.find(
-        (card) => card.pairId === firstCard.pairId && card.id !== firstCard.id,
+        (card) => card.pairId === firstCard.pairId && card.id !== firstCard.id
       );
 
       if (matchingCard) {

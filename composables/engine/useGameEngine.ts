@@ -19,7 +19,7 @@
  */
 import { ref, reactive, readonly } from "vue";
 import type { GameCard } from "~/types/game";
-
+import { imageLoader } from "~/services/ImageLoader";
 // Engine state interface
 interface EngineState {
   isInitialized: boolean;
@@ -449,7 +449,7 @@ export const useGameEngine = () => {
   };
 
   /**
-   * Draw card back
+   * Draw card back with consistent CS2 appearance for all hidden cards
    */
   const drawCardBack = (
     ctx: CanvasRenderingContext2D,
@@ -458,18 +458,71 @@ export const useGameEngine = () => {
     width: number,
     height: number
   ): void => {
-    // Draw CS2 logo or pattern
-    ctx.fillStyle = "#2c3e50";
-    ctx.fillRect(x + 10, y + 10, width - 20, height - 20);
+    // Draw consistent dark background for all hidden cards
+    const gradient = ctx.createLinearGradient(x, y, x + width, y + height);
+    gradient.addColorStop(0, "#2c3e50");
+    gradient.addColorStop(0.5, "#34495e");
+    gradient.addColorStop(1, "#2c3e50");
 
-    // Draw CS2 text
+    ctx.fillStyle = gradient;
+    ctx.fillRect(x, y, width, height);
+
+    // Draw inner border for depth
+    ctx.strokeStyle = "#1a252f";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 2, y + 2, width - 4, height - 4);
+
+    // Draw CS2 logo in center
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 14px Arial";
+    ctx.font = `bold ${Math.min(width, height) * 0.15}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // Add subtle shadow for better visibility
+    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+    ctx.shadowBlur = 2;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+
     ctx.fillText("CS2", x + width / 2, y + height / 2);
+
+    // Reset shadow
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+
+    // Draw decorative pattern
+    drawDecorativePattern(ctx, x, y, width, height);
   };
 
   /**
-   * Draw card front with item
+   * Draw decorative pattern for card back
+   */
+  const drawDecorativePattern = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): void => {
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    ctx.lineWidth = 1;
+
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+    const radius = Math.min(width, height) * 0.3;
+
+    // Draw concentric circles
+    for (let i = 1; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius * (i / 3), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  };
+
+  /**
+   * Draw card front with CS2 item and actual weapon image
    */
   const drawCardFront = (
     ctx: CanvasRenderingContext2D,
@@ -479,14 +532,173 @@ export const useGameEngine = () => {
     height: number,
     card: GameCard
   ): void => {
-    // For now, draw placeholder content
-    ctx.fillStyle = "#34495e";
-    ctx.fillRect(x + 5, y + 5, width - 10, height - 10);
+    // Draw rarity-based gradient background
+    drawCardBackground(ctx, x, y, width, height, card.cs2Item.rarity);
 
-    // Draw item name
+    // Calculate image area (top 60% of card)
+    const imageHeight = height * 0.6;
+    const imageY = y + 5;
+    const imageWidth = width - 10;
+    const imageX = x + 5;
+
+    // Draw image background
+    const imageGradient = ctx.createLinearGradient(
+      imageX,
+      imageY,
+      imageX,
+      imageY + imageHeight
+    );
+    imageGradient.addColorStop(0, "rgba(255, 255, 255, 0.2)");
+    imageGradient.addColorStop(1, "rgba(255, 255, 255, 0.05)");
+
+    ctx.fillStyle = imageGradient;
+    ctx.fillRect(imageX, imageY, imageWidth, imageHeight - 5);
+
+    // Try to get the weapon image
+    const weaponImage = imageLoader.getCachedImage(card.cs2Item.imageUrl);
+
+    if (weaponImage) {
+      // Draw the actual weapon image
+      ctx.save();
+
+      // Create clipping path for the image area
+      ctx.beginPath();
+      ctx.rect(imageX, imageY, imageWidth, imageHeight - 5);
+      ctx.clip();
+
+      // Calculate scaling to fit image while maintaining aspect ratio
+      const scale = Math.min(
+        imageWidth / weaponImage.width,
+        (imageHeight - 5) / weaponImage.height
+      );
+
+      const scaledWidth = weaponImage.width * scale;
+      const scaledHeight = weaponImage.height * scale;
+
+      // Center the scaled image
+      const drawX = imageX + (imageWidth - scaledWidth) / 2;
+      const drawY = imageY + (imageHeight - 5 - scaledHeight) / 2;
+
+      // Draw the weapon image
+      ctx.drawImage(weaponImage, drawX, drawY, scaledWidth, scaledHeight);
+
+      ctx.restore();
+    } else if (imageLoader.isImageLoading(card.cs2Item.imageUrl)) {
+      // Show loading state
+      const centerX = imageX + imageWidth / 2;
+      const centerY = imageY + (imageHeight - 5) / 2;
+      const radius = Math.min(imageWidth, imageHeight) * 0.05;
+
+      // Draw loading spinner
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 1.5);
+      ctx.stroke();
+
+      // Draw loading text
+      ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+      ctx.font = `${Math.min(imageWidth * 0.06, 10)}px Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("Loading...", centerX, centerY + radius + 12);
+    } else {
+      // Show placeholder icon
+      const centerX = imageX + imageWidth / 2;
+      const centerY = imageY + (imageHeight - 5) / 2;
+      const iconSize = Math.min(imageWidth, imageHeight) * 0.25;
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.font = `${iconSize}px Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      // Choose icon based on weapon category
+      let icon = "🔫"; // Default weapon icon
+      if (card.cs2Item.category === "knife") {
+        icon = "🗡️";
+      } else if (card.cs2Item.category === "glove") {
+        icon = "🧤";
+      }
+
+      ctx.fillText(icon, centerX, centerY);
+
+      // Try to load the image if not already attempted
+      if (!imageLoader.isImageLoaded(card.cs2Item.imageUrl)) {
+        imageLoader
+          .loadImage(card.cs2Item.imageUrl, {
+            crossOrigin: "anonymous",
+            timeout: 10000, // 10 second timeout
+          })
+          .catch((error) => {
+            console.warn(
+              `Failed to load weapon image for ${card.cs2Item.name}:`,
+              error
+            );
+          });
+      }
+    }
+
+    // Draw image border
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(imageX, imageY, imageWidth, imageHeight - 5);
+
+    // Draw item name in bottom area
+    const textY = y + imageHeight + 15;
+
     ctx.fillStyle = "#ffffff";
-    ctx.font = "12px Arial";
-    ctx.fillText(card.cs2Item.name, x + width / 2, y + height / 2);
+    ctx.font = `bold ${Math.min(width * 0.08, 12)}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+
+    // Add text shadow for better readability
+    ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
+    ctx.shadowBlur = 2;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+
+    // Wrap text if too long
+    const maxTextWidth = width - 10;
+    const words = card.cs2Item.name.split(" ");
+    let line = "";
+    let lineY = textY;
+
+    for (let i = 0; i < words.length; i++) {
+      const testLine = line + words[i] + " ";
+      const metrics = ctx.measureText(testLine);
+      const testWidth = metrics.width;
+
+      if (testWidth > maxTextWidth && i > 0) {
+        ctx.fillText(line.trim(), x + width / 2, lineY);
+        line = words[i] + " ";
+        lineY += 14;
+      } else {
+        line = testLine;
+      }
+    }
+    ctx.fillText(line.trim(), x + width / 2, lineY);
+
+    // Reset shadow
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+  };
+
+  /**
+   * Draw rarity indicator on card
+   */
+  const _drawRarityIndicator = (
+    _ctx: CanvasRenderingContext2D,
+    _x: number,
+    _y: number,
+    _width: number,
+    _height: number,
+    _rarity: string
+  ): void => {
+    // This function is reserved for future use
+    // Currently rarity is shown through background gradient
   };
 
   /**

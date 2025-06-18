@@ -1,7 +1,55 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { useGameCardsStore } from "~/stores/game/cards";
-import type { DifficultyLevel } from "~/types/game";
+import type {
+  DifficultyLevel,
+  CS2Item,
+  ItemRarity,
+  ItemCategory,
+} from "~/types/game";
+
+// Mock the cs2ApiService to prevent actual API calls during tests
+vi.mock("~/services/cs2ApiService", () => {
+  const rarities: ItemRarity[] = [
+    "consumer",
+    "industrial",
+    "milSpec",
+    "restricted",
+    "classified",
+    "covert",
+  ];
+  const categories: ItemCategory[] = ["weapon", "knife", "glove"];
+
+  const mockCS2Items: CS2Item[] = Array.from({ length: 50 }, (_, i) => ({
+    id: `mock-item-${i}`,
+    name: `Mock CS2 Item ${i + 1}`,
+    imageUrl: `/mock-image-${i}.jpg`,
+    rarity: rarities[i % 6],
+    category: categories[i % 3],
+    collection: "Mock Collection",
+    exterior: "Factory New",
+  }));
+
+  const mockService = {
+    getCS2Items: vi.fn().mockResolvedValue(mockCS2Items),
+    getCacheStatus: vi.fn().mockReturnValue({
+      hasCache: false,
+      isValid: false,
+      itemCount: 0,
+      age: 0,
+    }),
+    clearCache: vi.fn(),
+    getAvailableCategories: vi
+      .fn()
+      .mockResolvedValue(["weapon", "knife", "glove"]),
+    getItemsByCategory: vi.fn().mockResolvedValue(mockCS2Items.slice(0, 10)),
+  };
+
+  return {
+    cs2ApiService: mockService,
+    default: mockService,
+  };
+});
 
 describe("Game Cards Store", () => {
   beforeEach(() => {
@@ -22,7 +70,7 @@ describe("Game Cards Store", () => {
   });
 
   describe("Card Generation", () => {
-    it("should generate correct number of cards for easy difficulty", () => {
+    it("should generate correct number of cards for easy difficulty", async () => {
       const store = useGameCardsStore();
       const difficulty: DifficultyLevel = {
         name: "easy",
@@ -30,7 +78,7 @@ describe("Game Cards Store", () => {
         gridSize: { rows: 3, cols: 4 },
       };
 
-      store.generateCards(difficulty, "test-seed");
+      await store.generateCards(difficulty, "test-seed");
 
       expect(store.cards).toHaveLength(12);
       // Should create 6 pairs
@@ -38,7 +86,7 @@ describe("Game Cards Store", () => {
       expect(pairs.size).toBe(6);
     });
 
-    it("should generate correct number of cards for medium difficulty", () => {
+    it("should generate correct number of cards for medium difficulty", async () => {
       const store = useGameCardsStore();
       const difficulty: DifficultyLevel = {
         name: "medium",
@@ -46,7 +94,7 @@ describe("Game Cards Store", () => {
         gridSize: { rows: 4, cols: 6 },
       };
 
-      store.generateCards(difficulty, "test-seed");
+      await store.generateCards(difficulty, "test-seed");
 
       expect(store.cards).toHaveLength(24);
       // Should create 12 pairs
@@ -54,7 +102,7 @@ describe("Game Cards Store", () => {
       expect(pairs.size).toBe(12);
     });
 
-    it("should generate correct number of cards for hard difficulty", () => {
+    it("should generate correct number of cards for hard difficulty", async () => {
       const store = useGameCardsStore();
       const difficulty: DifficultyLevel = {
         name: "hard",
@@ -62,7 +110,7 @@ describe("Game Cards Store", () => {
         gridSize: { rows: 6, cols: 8 },
       };
 
-      store.generateCards(difficulty, "test-seed");
+      await store.generateCards(difficulty, "test-seed");
 
       expect(store.cards).toHaveLength(48);
       // Should create 24 pairs
@@ -70,7 +118,7 @@ describe("Game Cards Store", () => {
       expect(pairs.size).toBe(24);
     });
 
-    it("should create proper pairs for each card", () => {
+    it("should create proper pairs for each card", async () => {
       const store = useGameCardsStore();
       const difficulty: DifficultyLevel = {
         name: "easy",
@@ -78,7 +126,7 @@ describe("Game Cards Store", () => {
         gridSize: { rows: 3, cols: 4 },
       };
 
-      store.generateCards(difficulty, "test-seed");
+      await store.generateCards(difficulty, "test-seed");
 
       // Each pairId should appear exactly twice
       const pairCounts = new Map<string, number>();
@@ -91,7 +139,7 @@ describe("Game Cards Store", () => {
       });
     });
 
-    it("should set correct grid positions", () => {
+    it("should set correct grid positions", async () => {
       const store = useGameCardsStore();
       const difficulty: DifficultyLevel = {
         name: "easy",
@@ -99,7 +147,7 @@ describe("Game Cards Store", () => {
         gridSize: { rows: 3, cols: 4 },
       };
 
-      store.generateCards(difficulty, "test-seed");
+      await store.generateCards(difficulty, "test-seed");
 
       store.cards.forEach((card, index) => {
         const expectedRow = Math.floor(index / 4);
@@ -109,7 +157,7 @@ describe("Game Cards Store", () => {
       });
     });
 
-    it("should use seeded randomization for reproducible shuffles", () => {
+    it("should use seeded randomization for reproducible shuffles", async () => {
       const store1 = useGameCardsStore();
       const store2 = useGameCardsStore();
       const difficulty: DifficultyLevel = {
@@ -119,16 +167,16 @@ describe("Game Cards Store", () => {
       };
       const seed = "test-seed-123";
 
-      store1.generateCards(difficulty, seed);
-      store2.generateCards(difficulty, seed);
+      await store1.generateCards(difficulty, seed);
+      await store2.generateCards(difficulty, seed);
 
       // Same seed should produce same card order
       expect(store1.cards.map((c) => c.pairId)).toEqual(
-        store2.cards.map((c) => c.pairId),
+        store2.cards.map((c) => c.pairId)
       );
     });
 
-    it("should produce different shuffles with different seeds", () => {
+    it("should produce different shuffles with different seeds", async () => {
       const difficulty: DifficultyLevel = {
         name: "easy",
         cardCount: 12,
@@ -154,8 +202,8 @@ describe("Game Cards Store", () => {
         setActivePinia(createPinia());
         const store2 = useGameCardsStore();
 
-        store1.generateCards(difficulty, seed1);
-        store2.generateCards(difficulty, seed2);
+        await store1.generateCards(difficulty, seed1);
+        await store2.generateCards(difficulty, seed2);
 
         const order1 = store1.cards.map((c) => c.pairId);
         const order2 = store2.cards.map((c) => c.pairId);
@@ -170,7 +218,55 @@ describe("Game Cards Store", () => {
       expect(foundDifferentShuffle).toBe(true);
     });
 
-    it("should initialize all cards as hidden", () => {
+    it("should ensure no pairs are adjacent after shuffling", () => {
+      const store = useGameCardsStore();
+      const difficulties: DifficultyLevel[] = [
+        { name: "easy", cardCount: 12, gridSize: { rows: 3, cols: 4 } },
+        { name: "medium", cardCount: 24, gridSize: { rows: 4, cols: 6 } },
+        { name: "hard", cardCount: 48, gridSize: { rows: 6, cols: 8 } },
+      ];
+
+      difficulties.forEach((difficulty) => {
+        // Test with multiple seeds to ensure consistency
+        const testSeeds = [
+          "test-1",
+          "test-2",
+          "adjacent-check",
+          "random-seed-123",
+        ];
+
+        testSeeds.forEach((seed) => {
+          store.generateCards(difficulty, seed);
+          const adjacencyCheck = store.debugCheckAdjacentPairs();
+
+          expect(adjacencyCheck.hasAdjacent).toBe(false);
+          expect(adjacencyCheck.adjacentPairs).toHaveLength(0);
+        });
+      });
+    });
+
+    it("should have varied rarities in generated cards", async () => {
+      const store = useGameCardsStore();
+      const difficulty: DifficultyLevel = {
+        name: "medium",
+        cardCount: 24,
+        gridSize: { rows: 4, cols: 6 },
+      };
+
+      await store.generateCards(difficulty, "rarity-test");
+
+      // Check that we have different rarities
+      const rarities = new Set(store.cards.map((card) => card.cs2Item.rarity));
+      expect(rarities.size).toBeGreaterThan(1);
+
+      // Check that we have different categories
+      const categories = new Set(
+        store.cards.map((card) => card.cs2Item.category)
+      );
+      expect(categories.size).toBeGreaterThan(1);
+    });
+
+    it("should initialize all cards as hidden", async () => {
       const store = useGameCardsStore();
       const difficulty: DifficultyLevel = {
         name: "easy",
@@ -178,7 +274,7 @@ describe("Game Cards Store", () => {
         gridSize: { rows: 3, cols: 4 },
       };
 
-      store.generateCards(difficulty, "test-seed");
+      await store.generateCards(difficulty, "test-seed");
 
       store.cards.forEach((card) => {
         expect(card.state).toBe("hidden");
@@ -188,14 +284,14 @@ describe("Game Cards Store", () => {
   });
 
   describe("Card Selection", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       const store = useGameCardsStore();
       const difficulty: DifficultyLevel = {
         name: "easy",
         cardCount: 12,
         gridSize: { rows: 3, cols: 4 },
       };
-      store.generateCards(difficulty, "test-seed");
+      await store.generateCards(difficulty, "test-seed");
     });
 
     it("should select hidden cards successfully", () => {
@@ -250,14 +346,14 @@ describe("Game Cards Store", () => {
   });
 
   describe("Matching Logic", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       const store = useGameCardsStore();
       const difficulty: DifficultyLevel = {
         name: "easy",
         cardCount: 12,
         gridSize: { rows: 3, cols: 4 },
       };
-      store.generateCards(difficulty, "test-seed");
+      await store.generateCards(difficulty, "test-seed");
     });
 
     it("should match cards with same pairId", async () => {
@@ -266,7 +362,7 @@ describe("Game Cards Store", () => {
       // Find two cards with the same pairId
       const firstCard = store.cards[0];
       const matchingCard = store.cards.find(
-        (card) => card.pairId === firstCard.pairId && card.id !== firstCard.id,
+        (card) => card.pairId === firstCard.pairId && card.id !== firstCard.id
       )!;
 
       // Select both cards
@@ -288,7 +384,7 @@ describe("Game Cards Store", () => {
       // Find two cards with different pairIds
       const firstCard = store.cards[0];
       const nonMatchingCard = store.cards.find(
-        (card) => card.pairId !== firstCard.pairId,
+        (card) => card.pairId !== firstCard.pairId
       )!;
 
       // Select both cards
@@ -351,7 +447,7 @@ describe("Game Cards Store", () => {
 
       expect(store.revealedCards).toHaveLength(2);
       expect(
-        store.revealedCards.every((card) => card.state === "revealed"),
+        store.revealedCards.every((card) => card.state === "revealed")
       ).toBe(true);
     });
 
@@ -364,7 +460,7 @@ describe("Game Cards Store", () => {
 
       expect(store.matchedCards).toHaveLength(2);
       expect(store.matchedCards.every((card) => card.state === "matched")).toBe(
-        true,
+        true
       );
     });
 
@@ -377,7 +473,7 @@ describe("Game Cards Store", () => {
 
       expect(store.hiddenCards).toHaveLength(10);
       expect(store.hiddenCards.every((card) => card.state === "hidden")).toBe(
-        true,
+        true
       );
     });
   });
