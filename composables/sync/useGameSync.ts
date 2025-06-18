@@ -20,9 +20,8 @@
 import { ref, watch, nextTick } from "vue";
 import { useGameCoreStore } from "~/stores/game/core";
 import { useGameCardsStore } from "~/stores/game/cards";
-import { useCanvasObjects } from "~/composables/engine/useCanvasObjects";
 import { useCanvasLayout } from "~/composables/engine/useCanvasLayout";
-import { useCardRenderer } from "~/composables/engine/useCardRenderer";
+import { useGameEngine } from "~/composables/engine/useGameEngine";
 import type { GameCard, GameStats } from "~/types/game";
 
 // Synchronization event types
@@ -60,15 +59,16 @@ interface SyncStats {
   queueSize: number;
 }
 
-export const useGameSync = () => {
+export const useGameSync = (gameEngine?: ReturnType<typeof useGameEngine>) => {
   // Store references
   const gameStore = useGameCoreStore();
   const cardsStore = useGameCardsStore();
 
   // Composable references
-  const canvasObjects = useCanvasObjects();
   const canvasLayout = useCanvasLayout();
-  const cardRenderer = useCardRenderer();
+
+  // Use provided gameEngine or create a new one (fallback)
+  const engine = gameEngine || useGameEngine();
 
   // Sync configuration
   const config = ref<SyncConfig>({
@@ -119,7 +119,7 @@ export const useGameSync = () => {
           detectCardChanges(newCards, oldCards);
         }
       },
-      { deep: true }
+      { deep: true, immediate: true }
     );
 
     // Watch game state changes
@@ -154,8 +154,6 @@ export const useGameSync = () => {
       },
       { deep: true }
     );
-
-    console.log("Game synchronization watchers initialized");
   };
 
   /**
@@ -334,58 +332,37 @@ export const useGameSync = () => {
     card: GameCard,
     index: number
   ): Promise<void> => {
-    // Get or create canvas object for card
-    const cardObject = canvasObjects.acquireObject("card", card.id);
-
-    if (!cardObject) {
-      console.warn(`Failed to acquire canvas object for card: ${card.id}`);
-      return;
-    }
-
-    // Update card data - ensure it's a CardObject
-    if (cardObject.type === "card") {
-      cardObject.card = card;
-    }
-
     // Calculate position based on layout
     const position = canvasLayout.getCardPosition(index);
-    cardObject.position = position;
 
-    // Update size based on current layout
-    cardObject.size = {
-      width: canvasLayout.cardSize.value.width,
-      height: canvasLayout.cardSize.value.height,
+    // Create canvas object for the card
+    const cardObject = {
+      id: card.id,
+      type: "card" as const,
+      position: position,
+      size: {
+        width: canvasLayout.cardSize.value.width,
+        height: canvasLayout.cardSize.value.height,
+      },
+      visible: true,
+      zIndex: 1,
+      data: {
+        card: card,
+        parallaxOffset: { x: 0, y: 0 },
+      },
     };
 
-    // Update visual state based on card state
-    updateCardVisualState(card.id, getVisualStateForCard(card));
+    // Add object to game engine
+    engine.addCanvasObject(card.id, cardObject);
 
-    // Start flip animation if card state changed - ensure it's a CardObject
-    if (
-      card.state === "revealed" &&
-      cardObject.type === "card" &&
-      !cardObject.flipAnimation.isFlipping
-    ) {
-      startCardFlipAnimation(card.id);
-    }
-  };
-
-  /**
-   * Get visual state for card based on game state
-   */
-  const getVisualStateForCard = (card: GameCard) => {
-    const baseState = cardRenderer.createCardVisualState();
-
-    switch (card.state) {
-      case "hidden":
-        return { ...baseState, scale: 1, opacity: 1 };
-      case "revealed":
-        return { ...baseState, scale: 1.02, opacity: 1 };
-      case "matched":
-        return { ...baseState, scale: 0.95, opacity: 0.8 };
-      default:
-        return baseState;
-    }
+    // Update card render data for animations
+    engine.updateCardRenderData(card.id, {
+      card: card,
+      animationProgress: 0,
+      isFlipping: card.state === "revealed",
+      flipDirection: card.state === "revealed" ? "front" : "back",
+      parallaxOffset: { x: 0, y: 0 },
+    });
   };
 
   /**
@@ -405,17 +382,20 @@ export const useGameSync = () => {
           parallaxOffset?: { x: number; y: number };
         }
   ): void => {
-    // This would integrate with the card renderer to update visual properties
-    // For now, we'll just log the update
-    console.log(`Updating visual state for card ${cardId}:`, stateUpdates);
+    // Update card render data in game engine
+    engine.updateCardRenderData(cardId, stateUpdates);
   };
 
   /**
    * Start flip animation for card
    */
   const startCardFlipAnimation = (cardId: string): void => {
-    // This would trigger the flip animation in the card renderer
-    console.log(`Starting flip animation for card: ${cardId}`);
+    // Trigger flip animation through game engine
+    engine.updateCardRenderData(cardId, {
+      isFlipping: true,
+      flipDirection: "front",
+      animationProgress: 0,
+    });
   };
 
   /**
@@ -439,11 +419,11 @@ export const useGameSync = () => {
    */
   const processMoveIncrements = async (events: SyncEvent[]): Promise<void> => {
     // Batch move increments and update UI accordingly
-    const totalMoves = events.reduce(
+    const _totalMoves = events.reduce(
       (sum, event) => sum + (event.data.moves || 1),
       0
     );
-    console.log(`Processing ${totalMoves} move increments`);
+    // TODO: Use totalMoves for UI updates when implemented
   };
 
   /**
@@ -464,17 +444,20 @@ export const useGameSync = () => {
   const triggerGameCompleteEffects = async (): Promise<void> => {
     // Add sparkle effects around all matched cards
     for (const card of cardsStore.matchedCards) {
-      const effect = canvasObjects.acquireObject(
-        "effect",
-        `sparkle-${card.id}`
-      );
-      if (effect && effect.type === "effect") {
-        effect.effectType = "sparkle";
-        effect.position = { x: card.position.x, y: card.position.y };
-        effect.duration = 2000;
-      }
+      const effectObject = {
+        id: `sparkle-${card.id}`,
+        type: "effect" as const,
+        position: { x: card.position.x, y: card.position.y },
+        size: { width: 50, height: 50 },
+        visible: true,
+        zIndex: 10,
+        data: {
+          type: "sparkle",
+          progress: 0,
+        },
+      };
+      engine.addCanvasObject(`sparkle-${card.id}`, effectObject);
     }
-    console.log("Game complete effects triggered");
   };
 
   /**
@@ -482,12 +465,19 @@ export const useGameSync = () => {
    */
   const triggerMatchEffect = async (cardIds: string[]): Promise<void> => {
     for (const cardId of cardIds) {
-      const effect = canvasObjects.acquireObject("effect", `match-${cardId}`);
-      if (effect && effect.type === "effect") {
-        effect.effectType = "pulse";
-        effect.duration = 500;
-        effect.color = "#27ae60";
-      }
+      const effectObject = {
+        id: `match-${cardId}`,
+        type: "effect" as const,
+        position: { x: 0, y: 0 }, // Will be set based on card position
+        size: { width: 50, height: 50 },
+        visible: true,
+        zIndex: 5,
+        data: {
+          type: "pulse",
+          progress: 0,
+        },
+      };
+      engine.addCanvasObject(`match-${cardId}`, effectObject);
     }
   };
 
@@ -513,16 +503,16 @@ export const useGameSync = () => {
    * Refresh all cards in canvas
    */
   const refreshAllCards = async (): Promise<void> => {
-    // Clear existing card objects
-    canvasObjects.clearAllObjects();
+    // Clear existing card objects by removing them individually
+    for (const card of cardsStore.cards) {
+      engine.removeCanvasObject(card.id);
+    }
 
     // Recreate all card objects
     for (let i = 0; i < cardsStore.cards.length; i++) {
       const card = cardsStore.cards[i];
       await syncCardToCanvas(card, i);
     }
-
-    console.log(`Refreshed ${cardsStore.cards.length} cards in canvas`);
   };
 
   /**

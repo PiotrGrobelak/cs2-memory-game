@@ -169,7 +169,12 @@ export const useSeedSystem = () => {
   };
 
   // Utility functions
-  const normalizeSeed = (seed: string): string => {
+  const normalizeSeed = (seed: string | null | undefined): string => {
+    if (!seed || typeof seed !== "string") {
+      console.warn("Invalid seed provided to normalizeSeed:", seed);
+      return ""; // Return empty string for invalid seeds
+    }
+
     return seed
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "") // Remove non-alphanumeric
@@ -177,7 +182,7 @@ export const useSeedSystem = () => {
   };
 
   const validateSeed = (
-    seed: string,
+    seed: string
   ): { isValid: boolean; error: string | null } => {
     if (!seed) {
       return { isValid: false, error: "Seed cannot be empty" };
@@ -272,7 +277,7 @@ export const useSeedSystem = () => {
       if (typeof localStorage !== "undefined") {
         localStorage.setItem(
           "cs2-memory-seed-history",
-          JSON.stringify(state.value.seedHistory),
+          JSON.stringify(state.value.seedHistory)
         );
       }
     } catch (error) {

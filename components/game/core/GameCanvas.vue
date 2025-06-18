@@ -20,6 +20,7 @@ import { useGameEngine } from "~/composables/engine/useGameEngine";
 import { useCanvasLayout } from "~/composables/engine/useCanvasLayout";
 import { useGameCoreStore } from "~/stores/game/core";
 import { useGameCardsStore } from "~/stores/game/cards";
+import { useGameSync } from "~/composables/sync/useGameSync";
 import type { CanvasRenderer } from "~/services/CanvasRenderer";
 
 // Props
@@ -44,6 +45,7 @@ const gameEngine = useGameEngine();
 const canvasLayout = useCanvasLayout();
 const gameStore = useGameCoreStore();
 const cardsStore = useGameCardsStore();
+const gameSync = useGameSync(gameEngine);
 
 // State
 const isInitialized = ref(false);
@@ -138,12 +140,18 @@ async function initializeCanvas() {
       canvasLayout.calculateLayout(gameStore.difficulty);
     }
 
+    // Update container size for layout calculations
+    const rect = containerRef.value.getBoundingClientRect();
+    canvasLayout.updateContainerSize(rect.width, rect.height);
+
     // Initialize game engine
     await gameEngine.init(canvasElement.value);
     gameEngine.start();
 
+    // Initialize game sync
+    gameSync.initializeSync();
+
     isInitialized.value = true;
-    console.log("Game Canvas initialized successfully");
   } catch (error) {
     console.error("Failed to initialize game canvas:", error);
   }

@@ -82,7 +82,7 @@ export const useGameController = () => {
 
   // Actions
   const initializeGame = async (
-    options: Partial<GameOptions> = {},
+    options: Partial<GameOptions> = {}
   ): Promise<boolean> => {
     state.value.isInitializing = true;
     state.value.error = null;
@@ -129,7 +129,6 @@ export const useGameController = () => {
       await persistence.saveGameOptions(finalOptions);
 
       state.value.initializationStep = "Ready!";
-      console.log("Game controller initialized successfully");
       return true;
     } catch (error) {
       const errorMessage =
@@ -153,14 +152,15 @@ export const useGameController = () => {
 
     // Get CS2 items for the game using the current seed
     const requiredItemCount = getDifficultyItemCount(options.difficulty);
+
     const gameItems = cs2Data.getItemsForGame(
       requiredItemCount,
-      seedSystem.state.value.currentSeed,
+      seedSystem.state.value.currentSeed
     );
 
     if (gameItems.length < requiredItemCount) {
       throw new Error(
-        `Not enough CS2 items available. Required: ${requiredItemCount}, Available: ${gameItems.length}`,
+        `Not enough CS2 items available. Required: ${requiredItemCount}, Available: ${gameItems.length}`
       );
     }
 
@@ -176,13 +176,23 @@ export const useGameController = () => {
   };
 
   const restoreGameState = async (gameState: GameState): Promise<void> => {
-    // Restore seed
-    seedSystem.setSeed(gameState.seed, true);
+    // Validate game state
+    if (!gameState.seed) {
+      console.warn("GameState has no seed, generating a new one");
+      seedSystem.setRandomSeed();
+    } else {
+      // Restore seed
+      const success = seedSystem.setSeed(gameState.seed, true);
+      if (!success) {
+        console.warn("Failed to set saved seed, generating a new one");
+        seedSystem.setRandomSeed();
+      }
+    }
 
     // Restore game state
     await game.initializeNewGame({
       difficulty: gameState.difficulty.name,
-      seed: gameState.seed,
+      seed: seedSystem.state.value.currentSeed, // Use current seed instead of gameState.seed
     });
 
     // Restore cards and game progress
@@ -258,7 +268,7 @@ export const useGameController = () => {
 
   const newGameWithSeed = async (
     seed: string,
-    difficulty?: GameOptions["difficulty"],
+    difficulty?: GameOptions["difficulty"]
   ): Promise<boolean> => {
     try {
       const options: GameOptions = {
@@ -299,7 +309,7 @@ export const useGameController = () => {
 
   // Helper functions
   const getDifficultyItemCount = (
-    difficulty: GameOptions["difficulty"],
+    difficulty: GameOptions["difficulty"]
   ): number => {
     switch (difficulty) {
       case "easy":
@@ -338,7 +348,7 @@ export const useGameController = () => {
       if (game.isPlaying.value) {
         state.value.hasUnsavedChanges = true;
       }
-    },
+    }
   );
 
   // Watch for game completion
@@ -349,7 +359,7 @@ export const useGameController = () => {
         await nextTick();
         await completeGame();
       }
-    },
+    }
   );
 
   return {

@@ -206,10 +206,12 @@ export const useGameEngine = () => {
   };
 
   /**
-   * Render current frame
+   * Main render function
    */
   const render = (): void => {
-    if (!context.value || !canvas.value) return;
+    if (!context.value || !canvas.value) {
+      return;
+    }
 
     const ctx = context.value;
 

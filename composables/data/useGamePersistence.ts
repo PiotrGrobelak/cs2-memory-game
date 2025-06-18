@@ -133,7 +133,7 @@ export const useGamePersistence = () => {
       }
 
       console.log("Game state loaded successfully");
-      return saveData as GameState;
+      return saveData.gameState as GameState;
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to load game state";

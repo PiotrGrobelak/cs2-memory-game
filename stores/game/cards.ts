@@ -9,29 +9,35 @@ export const useGameCardsStore = defineStore("game-cards", () => {
 
   // Getters (computed)
   const revealedCards = computed(() =>
-    cards.value.filter((card) => card.state === "revealed"),
+    cards.value.filter((card) => card.state === "revealed")
   );
 
   const matchedCards = computed(() =>
-    cards.value.filter((card) => card.state === "matched"),
+    cards.value.filter((card) => card.state === "matched")
   );
 
   const hiddenCards = computed(() =>
-    cards.value.filter((card) => card.state === "hidden"),
+    cards.value.filter((card) => card.state === "hidden")
   );
 
   const selectedCardsData = computed(
     () =>
       selectedCards.value
         .map((cardId) => cards.value.find((card) => card.id === cardId))
-        .filter(Boolean) as GameCard[],
+        .filter(Boolean) as GameCard[]
   );
 
   // Actions
   const selectCard = (cardId: string): boolean => {
     const card = cards.value.find((c) => c.id === cardId);
     // Don't allow selection if card doesn't exist, is already revealed, or is matched
-    if (!card || card.state !== "hidden") return false;
+    if (!card) {
+      return false;
+    }
+
+    if (card.state !== "hidden") {
+      return false;
+    }
 
     // Reveal the card
     card.state = "revealed";
@@ -76,7 +82,7 @@ export const useGameCardsStore = defineStore("game-cards", () => {
   const generateCards = (
     difficulty: DifficultyLevel,
     seed: string,
-    _cs2Items: CS2Item[] = [],
+    _cs2Items: CS2Item[] = []
   ): void => {
     // Reset cards
     cards.value = [];
@@ -84,6 +90,7 @@ export const useGameCardsStore = defineStore("game-cards", () => {
 
     // Handle edge case of zero grid size
     if (difficulty.gridSize.rows === 0 || difficulty.gridSize.cols === 0) {
+      console.warn("Grid size is zero, no cards generated");
       return;
     }
 
@@ -199,7 +206,7 @@ export const useGameCardsStore = defineStore("game-cards", () => {
 
   const setCardPositions = (
     cardsArray: GameCard[],
-    gridSize: { rows: number; cols: number },
+    gridSize: { rows: number; cols: number }
   ): void => {
     cardsArray.forEach((card, index) => {
       const row = Math.floor(index / gridSize.cols);
