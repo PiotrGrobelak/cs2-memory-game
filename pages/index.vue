@@ -1,5 +1,5 @@
 <template>
-  <div class="cs2-memory-game">
+  <div>
     <!-- Loading Screen -->
     <div
       v-if="isLoading"
@@ -56,9 +56,7 @@
     </div>
 
     <!-- Main Game Interface -->
-    <div v-else class="main-game">
-      <GameInterface />
-    </div>
+    <GameInterface v-else />
 
     <!-- Debug Panel (Development Only) -->
     <div
@@ -221,7 +219,7 @@ const resetAllData = async () => {
     // Clear all stored data
     if (typeof localStorage !== "undefined") {
       const keysToRemove = Object.keys(localStorage).filter((key) =>
-        key.startsWith("cs2-memory-"),
+        key.startsWith("cs2-memory-")
       );
       keysToRemove.forEach((key) => localStorage.removeItem(key));
     }
@@ -279,73 +277,3 @@ if (typeof window !== "undefined") {
   });
 }
 </script>
-
-<style scoped>
-/* .cs2-memory-game {
-  @apply min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-slate-100 dark:from-slate-900 dark:via-blue-900 dark:to-slate-900;
-} */
-
-/* .loading-screen {
-  animation: fadeIn 0.5s ease-in-out;
-}
-
-.main-game {
-  animation: slideUp 0.6s ease-out;
-}
-
-.debug-panel {
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  animation: slideInRight 0.3s ease-out;
-} */
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-/* Custom scrollbar for debug panel */
-/* .debug-panel::-webkit-scrollbar {
-  width: 4px;
-}
-
-.debug-panel::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-}
-
-.debug-panel::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 2px;
-}
-
-.debug-panel::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
-} */
-</style>

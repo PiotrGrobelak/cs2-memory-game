@@ -306,7 +306,7 @@ watch(
         life: 5000,
       });
     }
-  },
+  }
 );
 
 // Initialize on mount

@@ -290,7 +290,7 @@ export const useGameEngine = () => {
       0,
       0,
       canvas.value.width,
-      canvas.value.height,
+      canvas.value.height
     );
     gradient.addColorStop(0, "#1a1a2e");
     gradient.addColorStop(0.5, "#16213e");
@@ -305,7 +305,7 @@ export const useGameEngine = () => {
    */
   const updateCardAnimation = (
     renderData: CardRenderData,
-    deltaTime: number,
+    deltaTime: number
   ): void => {
     if (!renderData.isFlipping) return;
 
@@ -324,7 +324,7 @@ export const useGameEngine = () => {
    */
   const updateCanvasObject = (
     object: CanvasObject,
-    _deltaTime: number,
+    _deltaTime: number
   ): void => {
     // Apply parallax effect if it's a card
     if (object.type === "card" && object.data) {
@@ -342,7 +342,7 @@ export const useGameEngine = () => {
    */
   const renderCanvasObject = (
     ctx: CanvasRenderingContext2D,
-    object: CanvasObject,
+    object: CanvasObject
   ): void => {
     if (!object.visible) return;
 
@@ -368,7 +368,7 @@ export const useGameEngine = () => {
    */
   const renderCard = (
     ctx: CanvasRenderingContext2D,
-    object: CanvasObject,
+    object: CanvasObject
   ): void => {
     const { position, size, data } = object;
 
@@ -405,7 +405,7 @@ export const useGameEngine = () => {
     y: number,
     width: number,
     height: number,
-    rarity: string,
+    rarity: string
   ): void => {
     const rarityColors = {
       consumer: ["#b0c3d9", "#ffffff"],
@@ -437,7 +437,7 @@ export const useGameEngine = () => {
     x: number,
     y: number,
     width: number,
-    height: number,
+    height: number
   ): void => {
     // Draw CS2 logo or pattern
     ctx.fillStyle = "#2c3e50";
@@ -458,7 +458,7 @@ export const useGameEngine = () => {
     y: number,
     width: number,
     height: number,
-    card: GameCard,
+    card: GameCard
   ): void => {
     // For now, draw placeholder content
     ctx.fillStyle = "#34495e";
@@ -479,7 +479,7 @@ export const useGameEngine = () => {
     y: number,
     width: number,
     height: number,
-    state: string,
+    state: string
   ): void => {
     const borderColors = {
       hidden: "#34495e",
@@ -498,7 +498,7 @@ export const useGameEngine = () => {
    */
   const renderEffect = (
     _ctx: CanvasRenderingContext2D,
-    _object: CanvasObject,
+    _object: CanvasObject
   ): void => {
     // TODO: Implement effect rendering
   };
@@ -508,7 +508,7 @@ export const useGameEngine = () => {
    */
   const renderUI = (
     _ctx: CanvasRenderingContext2D,
-    _object: CanvasObject,
+    _object: CanvasObject
   ): void => {
     // TODO: Implement UI rendering
   };
@@ -582,7 +582,7 @@ export const useGameEngine = () => {
    */
   const updateCardRenderData = (
     cardId: string,
-    data: Partial<CardRenderData>,
+    data: Partial<CardRenderData>
   ): void => {
     const existing = cardRenderData.value.get(cardId);
     if (existing) {

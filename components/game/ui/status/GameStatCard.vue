@@ -2,7 +2,7 @@
   <Card class="transition-all duration-200 hover:shadow-md">
     <template #content>
       <div class="flex items-center gap-3">
-        <i :class="`pi ${icon} text-${color}-500 text-2xl`" />
+        <i :class="iconClass" />
         <div>
           <div class="text-sm text-gray-600 dark:text-gray-400">
             {{ label }}
@@ -17,6 +17,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import Card from "primevue/card";
 
 // Props
@@ -27,7 +28,15 @@ interface Props {
   color?: "blue" | "purple" | "green" | "yellow" | "red";
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   color: "blue",
 });
+
+// Computed class for the icon
+const iconClass = computed(() => [
+  "pi",
+  props.icon,
+  `text-${props.color}-500`,
+  "text-2xl",
+]);
 </script>
