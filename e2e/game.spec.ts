@@ -49,7 +49,7 @@ test.describe("CS2 Memory Game", () => {
     // Check if basic meta tags are present
     const viewport = await page.getAttribute(
       'meta[name="viewport"]',
-      "content"
+      "content",
     );
     expect(viewport).toBeTruthy();
 

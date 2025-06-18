@@ -20,9 +20,9 @@
 import { ref, watch, nextTick } from "vue";
 import { useGameCoreStore } from "~/stores/game/core";
 import { useGameCardsStore } from "~/stores/game/cards";
-import { useCanvasObjects } from "~/composables/useCanvasObjects";
-import { useCanvasLayout } from "~/composables/useCanvasLayout";
-import { useCardRenderer } from "~/composables/useCardRenderer";
+import { useCanvasObjects } from "~/composables/engine/useCanvasObjects";
+import { useCanvasLayout } from "~/composables/engine/useCanvasLayout";
+import { useCardRenderer } from "~/composables/engine/useCardRenderer";
 import type { GameCard, GameStats } from "~/types/game";
 
 // Synchronization event types
@@ -119,7 +119,7 @@ export const useGameSync = () => {
           detectCardChanges(newCards, oldCards);
         }
       },
-      { deep: true }
+      { deep: true },
     );
 
     // Watch game state changes
@@ -132,7 +132,7 @@ export const useGameSync = () => {
           timestamp: performance.now(),
         });
       },
-      { deep: true }
+      { deep: true },
     );
 
     // Watch selected cards for immediate feedback
@@ -142,7 +142,7 @@ export const useGameSync = () => {
         if (newSelected.length !== oldSelected.length) {
           handleSelectedCardsChange(newSelected, oldSelected);
         }
-      }
+      },
     );
 
     // Watch layout changes
@@ -152,7 +152,7 @@ export const useGameSync = () => {
         syncFlags.value.layoutNeedSync = true;
         scheduleLayoutSync();
       },
-      { deep: true }
+      { deep: true },
     );
 
     console.log("Game synchronization watchers initialized");
@@ -163,7 +163,7 @@ export const useGameSync = () => {
    */
   const detectCardChanges = (
     newCards: GameCard[],
-    oldCards: GameCard[]
+    oldCards: GameCard[],
   ): void => {
     for (let i = 0; i < newCards.length; i++) {
       const newCard = newCards[i];
@@ -196,7 +196,7 @@ export const useGameSync = () => {
    */
   const handleSelectedCardsChange = (
     newSelected: string[],
-    oldSelected: string[]
+    oldSelected: string[],
   ): void => {
     // Cards that were deselected
     const deselected = oldSelected.filter((id) => !newSelected.includes(id));
@@ -253,7 +253,7 @@ export const useGameSync = () => {
       // Process events in batches
       const batchSize = Math.min(
         eventQueue.value.length,
-        config.value.maxBatchSize
+        config.value.maxBatchSize,
       );
       const batch = eventQueue.value.splice(0, batchSize);
 
@@ -291,7 +291,7 @@ export const useGameSync = () => {
         groups[event.type].push(event);
         return groups;
       },
-      {} as Record<string, SyncEvent[]>
+      {} as Record<string, SyncEvent[]>,
     );
 
     // Process each event type
@@ -317,7 +317,7 @@ export const useGameSync = () => {
    * Process card state change events
    */
   const processCardStateChanges = async (
-    events: SyncEvent[]
+    events: SyncEvent[],
   ): Promise<void> => {
     for (const event of events) {
       const { card, index } = event.data;
@@ -332,7 +332,7 @@ export const useGameSync = () => {
    */
   const syncCardToCanvas = async (
     card: GameCard,
-    index: number
+    index: number,
   ): Promise<void> => {
     // Get or create canvas object for card
     const cardObject = canvasObjects.acquireObject("card", card.id);
@@ -403,7 +403,7 @@ export const useGameSync = () => {
           isFlipping?: boolean;
           flipDirection?: "front" | "back";
           parallaxOffset?: { x: number; y: number };
-        }
+        },
   ): void => {
     // This would integrate with the card renderer to update visual properties
     // For now, we'll just log the update
@@ -422,7 +422,7 @@ export const useGameSync = () => {
    * Process game state change events
    */
   const processGameStateChanges = async (
-    events: SyncEvent[]
+    events: SyncEvent[],
   ): Promise<void> => {
     // Take the most recent game state
     const latestEvent = events[events.length - 1];
@@ -441,7 +441,7 @@ export const useGameSync = () => {
     // Batch move increments and update UI accordingly
     const totalMoves = events.reduce(
       (sum, event) => sum + (event.data.moves || 1),
-      0
+      0,
     );
     console.log(`Processing ${totalMoves} move increments`);
   };
@@ -466,7 +466,7 @@ export const useGameSync = () => {
     for (const card of cardsStore.matchedCards) {
       const effect = canvasObjects.acquireObject(
         "effect",
-        `sparkle-${card.id}`
+        `sparkle-${card.id}`,
       );
       if (effect && effect.type === "effect") {
         effect.effectType = "sparkle";

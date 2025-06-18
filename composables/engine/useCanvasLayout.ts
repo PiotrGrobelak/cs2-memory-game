@@ -92,7 +92,7 @@ export const useCanvasLayout = () => {
     const width = containerSize.value.width;
     return (
       BREAKPOINTS.find(
-        (bp) => width >= bp.minWidth && (!bp.maxWidth || width <= bp.maxWidth)
+        (bp) => width >= bp.minWidth && (!bp.maxWidth || width <= bp.maxWidth),
       ) || BREAKPOINTS[BREAKPOINTS.length - 1]
     ); // Default to desktop
   });
@@ -167,7 +167,7 @@ export const useCanvasLayout = () => {
       availableWidth,
       availableHeight,
       difficulty.gridSize,
-      breakpoint
+      breakpoint,
     );
 
     layoutConfig.cardSize = cardSize;
@@ -207,7 +207,7 @@ export const useCanvasLayout = () => {
     availableWidth: number,
     availableHeight: number,
     gridSize: { rows: number; cols: number },
-    breakpoint: BreakpointConfig
+    breakpoint: BreakpointConfig,
   ): { width: number; height: number } => {
     // Calculate maximum card size based on available space
     const maxWidthFromSpace =
@@ -238,7 +238,7 @@ export const useCanvasLayout = () => {
     // Apply breakpoint size constraints
     cardWidth = Math.max(
       breakpoint.minCardSize,
-      Math.min(breakpoint.maxCardSize, cardWidth)
+      Math.min(breakpoint.maxCardSize, cardWidth),
     );
     cardHeight = cardWidth * breakpoint.cardAspectRatio;
 
@@ -323,7 +323,7 @@ export const useCanvasLayout = () => {
    */
   const getCardIndexAtPosition = (
     canvasX: number,
-    canvasY: number
+    canvasY: number,
   ): number | null => {
     // Adjust for padding
     const relativeX = canvasX - layoutConfig.padding.left;

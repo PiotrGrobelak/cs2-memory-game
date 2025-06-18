@@ -66,7 +66,7 @@ export const useCS2Data = () => {
   // Actions
   const fetchItems = async (
     count: number = 100,
-    forceRefresh: boolean = false
+    forceRefresh: boolean = false,
   ): Promise<void> => {
     if (state.value.isLoading) {
       console.warn("CS2 data fetch already in progress");

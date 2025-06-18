@@ -19,10 +19,10 @@ import { ref, computed, watch, nextTick } from "vue";
 import type { GameState, GameOptions, GameResult } from "~/types/game";
 
 // Import all the composables we need to orchestrate
-import { useGame } from "~/composables/useGame";
-import { useCS2Data } from "~/composables/useCS2Data";
-import { useSeedSystem } from "~/composables/useSeedSystem";
-import { useGamePersistence } from "~/composables/useGamePersistence";
+import { useGame } from "~/composables/core/useGame";
+import { useCS2Data } from "~/composables/data/useCS2Data";
+import { useSeedSystem } from "~/composables/data/useSeedSystem";
+import { useGamePersistence } from "~/composables/data/useGamePersistence";
 import { useGameCoreStore } from "~/stores/game/core";
 import { useGameCardsStore } from "~/stores/game/cards";
 
@@ -82,7 +82,7 @@ export const useGameController = () => {
 
   // Actions
   const initializeGame = async (
-    options: Partial<GameOptions> = {}
+    options: Partial<GameOptions> = {},
   ): Promise<boolean> => {
     state.value.isInitializing = true;
     state.value.error = null;
@@ -155,12 +155,12 @@ export const useGameController = () => {
     const requiredItemCount = getDifficultyItemCount(options.difficulty);
     const gameItems = cs2Data.getItemsForGame(
       requiredItemCount,
-      seedSystem.state.value.currentSeed
+      seedSystem.state.value.currentSeed,
     );
 
     if (gameItems.length < requiredItemCount) {
       throw new Error(
-        `Not enough CS2 items available. Required: ${requiredItemCount}, Available: ${gameItems.length}`
+        `Not enough CS2 items available. Required: ${requiredItemCount}, Available: ${gameItems.length}`,
       );
     }
 
@@ -258,7 +258,7 @@ export const useGameController = () => {
 
   const newGameWithSeed = async (
     seed: string,
-    difficulty?: GameOptions["difficulty"]
+    difficulty?: GameOptions["difficulty"],
   ): Promise<boolean> => {
     try {
       const options: GameOptions = {
@@ -299,7 +299,7 @@ export const useGameController = () => {
 
   // Helper functions
   const getDifficultyItemCount = (
-    difficulty: GameOptions["difficulty"]
+    difficulty: GameOptions["difficulty"],
   ): number => {
     switch (difficulty) {
       case "easy":
@@ -338,7 +338,7 @@ export const useGameController = () => {
       if (game.isPlaying.value) {
         state.value.hasUnsavedChanges = true;
       }
-    }
+    },
   );
 
   // Watch for game completion
@@ -349,7 +349,7 @@ export const useGameController = () => {
         await nextTick();
         await completeGame();
       }
-    }
+    },
   );
 
   return {

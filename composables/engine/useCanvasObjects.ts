@@ -124,20 +124,20 @@ export const useCanvasObjects = () => {
   // Computed properties for easy access
   const activeCards = computed(() =>
     Array.from(activeObjects.value.values()).filter(
-      (obj): obj is CardObject => obj.type === "card" && obj.active
-    )
+      (obj): obj is CardObject => obj.type === "card" && obj.active,
+    ),
   );
 
   const activeEffects = computed(() =>
     Array.from(activeObjects.value.values()).filter(
-      (obj): obj is EffectObject => obj.type === "effect" && obj.active
-    )
+      (obj): obj is EffectObject => obj.type === "effect" && obj.active,
+    ),
   );
 
   const activeUI = computed(() =>
     Array.from(activeObjects.value.values()).filter(
-      (obj): obj is UIObject => obj.type === "ui" && obj.active
-    )
+      (obj): obj is UIObject => obj.type === "ui" && obj.active,
+    ),
   );
 
   /**
@@ -237,7 +237,7 @@ export const useCanvasObjects = () => {
    */
   const acquireObject = <T extends CanvasObject>(
     type: T["type"],
-    id: string
+    id: string,
   ): T | null => {
     let object: CanvasObject | undefined;
 
@@ -247,7 +247,7 @@ export const useCanvasObjects = () => {
         object = objectPools.cards.find((obj) => !obj.active);
         if (!object && objectPools.cards.length < poolConfig.cards.maxSize) {
           const newCard = createCardObject(
-            `pool-card-${objectPools.cards.length}`
+            `pool-card-${objectPools.cards.length}`,
           );
           objectPools.cards.push(newCard);
           object = newCard;
@@ -261,7 +261,7 @@ export const useCanvasObjects = () => {
           objectPools.effects.length < poolConfig.effects.maxSize
         ) {
           const newEffect = createEffectObject(
-            `pool-effect-${objectPools.effects.length}`
+            `pool-effect-${objectPools.effects.length}`,
           );
           objectPools.effects.push(newEffect);
           object = newEffect;
@@ -365,7 +365,7 @@ export const useCanvasObjects = () => {
    */
   const updateEffectObject = (
     effect: EffectObject,
-    deltaTime: number
+    deltaTime: number,
   ): void => {
     effect.progress += deltaTime / effect.duration;
 
@@ -442,7 +442,7 @@ export const useCanvasObjects = () => {
   const getObjectsInRadius = (
     x: number,
     y: number,
-    radius: number
+    radius: number,
   ): CollisionResult[] => {
     const results: CollisionResult[] = [];
 
@@ -465,7 +465,7 @@ export const useCanvasObjects = () => {
   const isPointInObject = (
     x: number,
     y: number,
-    object: CanvasObject
+    object: CanvasObject,
   ): boolean => {
     return (
       x >= object.position.x &&
@@ -481,7 +481,7 @@ export const useCanvasObjects = () => {
   const getDistanceToObject = (
     x: number,
     y: number,
-    object: CanvasObject
+    object: CanvasObject,
   ): number => {
     const centerX = object.position.x + object.size.width / 2;
     const centerY = object.position.y + object.size.height / 2;

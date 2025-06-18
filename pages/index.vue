@@ -7,7 +7,7 @@
     >
       <div class="text-center text-white">
         <div class="mb-8">
-          <i class="pi pi-spin pi-spinner text-6xl text-blue-400"></i>
+          <i class="pi pi-spin pi-spinner text-6xl text-blue-400" />
         </div>
         <h2 class="text-3xl font-bold mb-4">CS2 Memory Game</h2>
         <p class="text-lg opacity-80 mb-4">{{ loadingMessage }}</p>
@@ -15,7 +15,7 @@
           v-if="loadingProgress > 0"
           :value="loadingProgress"
           class="w-64 mx-auto"
-          :showValue="false"
+          :show-value="false"
         />
       </div>
     </div>
@@ -28,9 +28,7 @@
       <Card class="max-w-md w-full">
         <template #content>
           <div class="text-center">
-            <i
-              class="pi pi-exclamation-triangle text-6xl text-red-500 mb-4"
-            ></i>
+            <i class="pi pi-exclamation-triangle text-6xl text-red-500 mb-4" />
             <h2 class="text-2xl font-bold text-red-700 dark:text-red-300 mb-2">
               Game Loading Error
             </h2>
@@ -103,7 +101,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import type { useGameController } from "~/composables/useGameController";
+import type { useGameController } from "~/composables/core/useGameController";
 
 // PrimeVue components
 import Button from "primevue/button";
@@ -112,7 +110,7 @@ import ProgressBar from "primevue/progressbar";
 import Toast from "primevue/toast";
 
 // Game components
-import GameInterface from "~/components/game/GameInterface.vue";
+import GameInterface from "~/components/game/core/GameInterface.vue";
 
 // Define page meta
 definePageMeta({
@@ -185,7 +183,7 @@ const initializeGame = async () => {
 
     // Import and initialize game controller
     const { useGameController } = await import(
-      "~/composables/useGameController"
+      "~/composables/core/useGameController"
     );
     gameController = useGameController();
 
@@ -223,7 +221,7 @@ const resetAllData = async () => {
     // Clear all stored data
     if (typeof localStorage !== "undefined") {
       const keysToRemove = Object.keys(localStorage).filter((key) =>
-        key.startsWith("cs2-memory-")
+        key.startsWith("cs2-memory-"),
       );
       keysToRemove.forEach((key) => localStorage.removeItem(key));
     }

@@ -102,7 +102,7 @@ class CS2ApiService {
 
         if (!response.ok) {
           throw new Error(
-            `Local API request failed: ${response.status} ${response.statusText}`
+            `Local API request failed: ${response.status} ${response.statusText}`,
           );
         }
 
@@ -110,14 +110,14 @@ class CS2ApiService {
 
         if (!serverResponse.success || !serverResponse.data) {
           throw new Error(
-            serverResponse.error || "Server API returned unsuccessful response"
+            serverResponse.error || "Server API returned unsuccessful response",
           );
         }
 
         const transformedItems = this.transformApiData(serverResponse.data);
 
         console.log(
-          `Successfully fetched ${transformedItems.length} weapons from local API`
+          `Successfully fetched ${transformedItems.length} weapons from local API`,
         );
         return transformedItems;
       } catch (error) {
@@ -131,7 +131,7 @@ class CS2ApiService {
     }
 
     throw new Error(
-      `Failed to fetch from local API after ${this.options.maxRetries} attempts`
+      `Failed to fetch from local API after ${this.options.maxRetries} attempts`,
     );
   }
 
@@ -343,7 +343,7 @@ class CS2ApiService {
    */
   async getItemsByCategory(
     category: string,
-    count: number = 50
+    count: number = 50,
   ): Promise<CS2Item[]> {
     const allItems = await this.getCS2Items(1000);
     const filteredItems = allItems.filter((item) => item.category === category);

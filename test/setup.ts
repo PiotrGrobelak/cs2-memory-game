@@ -49,7 +49,7 @@ vi.stubGlobal(
       console.log("getContext", contextId);
       return canvasContextMock;
     }
-  }
+  },
 );
 
 // Configure Vue Test Utils with Pinia

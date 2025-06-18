@@ -170,7 +170,7 @@ export const useCardRenderer = () => {
     position: { x: number; y: number },
     size: { width: number; height: number },
     visualState: CardVisualState,
-    timestamp: number = performance.now()
+    timestamp: number = performance.now(),
   ): void => {
     const startTime = performance.now();
 
@@ -203,7 +203,7 @@ export const useCardRenderer = () => {
     ctx: CanvasRenderingContext2D,
     position: { x: number; y: number },
     size: { width: number; height: number },
-    visualState: CardVisualState
+    visualState: CardVisualState,
   ): void => {
     const centerX = position.x + size.width / 2;
     const centerY = position.y + size.height / 2;
@@ -240,7 +240,7 @@ export const useCardRenderer = () => {
     ctx: CanvasRenderingContext2D,
     size: { width: number; height: number },
     rarity: ItemRarity,
-    timestamp: number
+    timestamp: number,
   ): void => {
     // Draw background with animated rarity gradient
     drawRarityBackground(ctx, 0, 0, size.width, size.height, rarity, timestamp);
@@ -262,7 +262,7 @@ export const useCardRenderer = () => {
     ctx: CanvasRenderingContext2D,
     card: GameCard,
     size: { width: number; height: number },
-    timestamp: number
+    timestamp: number,
   ): void => {
     // Draw background
     drawRarityBackground(
@@ -272,7 +272,7 @@ export const useCardRenderer = () => {
       size.width,
       size.height,
       card.cs2Item.rarity,
-      timestamp
+      timestamp,
     );
 
     // Draw item content area
@@ -293,7 +293,7 @@ export const useCardRenderer = () => {
       size.width,
       size.height,
       card.cs2Item.rarity,
-      isHighlighted
+      isHighlighted,
     );
   };
 
@@ -307,7 +307,7 @@ export const useCardRenderer = () => {
     width: number,
     height: number,
     rarity: ItemRarity,
-    timestamp: number
+    timestamp: number,
   ): void => {
     const rarityConfig = rarityGradients[rarity];
 
@@ -324,7 +324,7 @@ export const useCardRenderer = () => {
     if (rarityConfig.animation) {
       const animationOffset = calculateAnimationOffset(
         timestamp,
-        rarityConfig.animation
+        rarityConfig.animation,
       );
       ctx.save();
       ctx.globalAlpha = 0.8 + 0.2 * animationOffset;
@@ -348,7 +348,7 @@ export const useCardRenderer = () => {
     y: number,
     width: number,
     height: number,
-    rarity: ItemRarity
+    rarity: ItemRarity,
   ): CanvasGradient => {
     const rarityConfig = rarityGradients[rarity];
     const angle = (config.gradientAngle * Math.PI) / 180;
@@ -368,7 +368,7 @@ export const useCardRenderer = () => {
    */
   const drawCardBackPattern = (
     ctx: CanvasRenderingContext2D,
-    size: { width: number; height: number }
+    size: { width: number; height: number },
   ): void => {
     const patternSize = Math.min(size.width, size.height) * 0.6;
     const centerX = size.width / 2;
@@ -390,7 +390,7 @@ export const useCardRenderer = () => {
    */
   const drawCS2Logo = (
     ctx: CanvasRenderingContext2D,
-    size: { width: number; height: number }
+    size: { width: number; height: number },
   ): void => {
     const centerX = size.width / 2;
     const centerY = size.height / 2;
@@ -421,7 +421,7 @@ export const useCardRenderer = () => {
   const drawItemContent = (
     ctx: CanvasRenderingContext2D,
     card: GameCard,
-    size: { width: number; height: number }
+    size: { width: number; height: number },
   ): void => {
     const contentMargin = 8;
     const contentWidth = size.width - contentMargin * 2;
@@ -458,7 +458,7 @@ export const useCardRenderer = () => {
   const drawItemName = (
     ctx: CanvasRenderingContext2D,
     itemName: string,
-    size: { width: number; height: number }
+    size: { width: number; height: number },
   ): void => {
     const textY = size.height - 20;
     const maxWidth = size.width - 16;
@@ -487,7 +487,7 @@ export const useCardRenderer = () => {
   const drawRarityIndicator = (
     ctx: CanvasRenderingContext2D,
     rarity: ItemRarity,
-    size: { width: number; height: number }
+    size: { width: number; height: number },
   ): void => {
     const indicatorSize = 8;
     const indicatorX = size.width - indicatorSize - 4;
@@ -502,7 +502,7 @@ export const useCardRenderer = () => {
       indicatorY + indicatorSize / 2,
       indicatorSize / 2,
       0,
-      Math.PI * 2
+      Math.PI * 2,
     );
     ctx.fill();
   };
@@ -517,7 +517,7 @@ export const useCardRenderer = () => {
     width: number,
     height: number,
     rarity: ItemRarity,
-    highlighted: boolean
+    highlighted: boolean,
   ): void => {
     const rarityConfig = rarityGradients[rarity];
 
@@ -548,7 +548,7 @@ export const useCardRenderer = () => {
     y: number,
     width: number,
     height: number,
-    radius: number
+    radius: number,
   ): void => {
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
@@ -568,7 +568,7 @@ export const useCardRenderer = () => {
    */
   const calculateAnimationOffset = (
     timestamp: number,
-    animation: { type: string; duration: number }
+    animation: { type: string; duration: number },
   ): number => {
     const progress = (timestamp % animation.duration) / animation.duration;
 
@@ -590,7 +590,7 @@ export const useCardRenderer = () => {
   const createCardVisualState = (
     flipProgress: number = 0,
     isFlipping: boolean = false,
-    parallaxOffset: { x: number; y: number } = { x: 0, y: 0 }
+    parallaxOffset: { x: number; y: number } = { x: 0, y: 0 },
   ): CardVisualState => ({
     flipProgress,
     isFlipping,
@@ -607,13 +607,13 @@ export const useCardRenderer = () => {
   const updateFlipAnimation = (
     visualState: CardVisualState,
     deltaTime: number,
-    easingType: string = "easeInOut"
+    easingType: string = "easeInOut",
   ): void => {
     if (!visualState.isFlipping) return;
 
     const progress = Math.min(
       1,
-      visualState.flipProgress + deltaTime / config.flipDuration
+      visualState.flipProgress + deltaTime / config.flipDuration,
     );
     visualState.flipProgress = easingFunctions[easingType](progress);
 
@@ -637,7 +637,7 @@ export const useCardRenderer = () => {
   const truncateText = (
     ctx: CanvasRenderingContext2D,
     text: string,
-    maxWidth: number
+    maxWidth: number,
   ): string => {
     const metrics = ctx.measureText(text);
     if (metrics.width <= maxWidth) return text;
@@ -658,7 +658,7 @@ export const useCardRenderer = () => {
    */
   const getGradientFromCache = (
     ctx: CanvasRenderingContext2D,
-    key: string
+    key: string,
   ): CanvasGradient | null => {
     const canvasKey = getCanvasKey(ctx);
     const canvasCache = gradientCache.value.get(canvasKey);

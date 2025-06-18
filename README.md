@@ -12,6 +12,10 @@ A browser-based memory card matching game featuring Counter-Strike 2 weapons and
     - [Frontend](#frontend)
     - [Development \& Testing](#development--testing)
     - [Data \& Storage](#data--storage)
+  - [Project Architecture](#project-architecture)
+    - [Component Structure](#component-structure)
+    - [Composables Architecture](#composables-architecture)
+    - [Application Flow](#application-flow)
   - [Getting Started Locally](#getting-started-locally)
     - [Prerequisites](#prerequisites)
     - [Installation](#installation)
@@ -64,6 +68,144 @@ CS2 Memory Game is an engaging, browser-based memory card matching game that com
 - **API Integration**: CS2 items API for weapon/item data
 - **Storage**: localStorage for game persistence
 - **Audio**: Web Audio API with OGG Vorbis + AAC fallback
+
+## Project Architecture
+
+The CS2 Memory Game is built using a **modular, feature-based architecture** that separates concerns and ensures maintainability. The codebase follows Vue 3 Composition API patterns with TypeScript for type safety.
+
+### Component Structure
+
+```
+components/
+├── game/
+│   ├── core/                    # Main game components
+│   │   ├── GameInterface.vue    # [ROOT] Primary game interface
+│   │   └── GameCanvas.vue       # HTML5 Canvas rendering component
+│   │
+│   ├── ui/                      # User interface components
+│   │   ├── header/              # Header section components
+│   │   │   ├── GameHeader.vue           # Main header with title
+│   │   │   ├── GameSettingsButton.vue  # Settings access
+│   │   │   └── GameShareButton.vue     # Game sharing functionality
+│   │   │
+│   │   └── status/              # Game status components
+│   │       ├── GameStatusBar.vue       # Real-time game statistics
+│   │       ├── GameStatCard.vue        # Individual stat display cards
+│   │       └── GameProgressBar.vue     # Game completion progress
+│   │
+│   └── dialogs/                 # Modal dialog components
+│       ├── SettingsDialog.vue   # Game configuration dialog
+│       └── NewGameDialog.vue    # New game setup dialog
+│
+├── debug/                       # Development tools
+│   └── GameDebugPanel.vue       # Debug information panel
+│
+└── error/                       # Error handling components
+    ├── GameErrorBoundary.vue    # Error boundary wrapper
+    └── GameErrorDisplay.vue     # Error state display
+```
+
+### Composables Architecture
+
+The composables follow a **layered architecture** with clear separation of responsibilities:
+
+```
+composables/
+├── core/                        # Core game logic layer
+│   ├── useGameController.ts     # [MAIN] Central orchestrator
+│   ├── useGame.ts               # Core game mechanics
+│   └── useGameLoader.ts         # Game initialization
+│
+├── engine/                      # Rendering engine layer
+│   ├── useGameEngine.ts         # HTML5 Canvas engine
+│   ├── useCanvasLayout.ts       # Layout calculations
+│   ├── useCanvasObjects.ts      # Object pooling system
+│   ├── useCanvasInteraction.ts  # User interaction handling
+│   └── useCardRenderer.ts       # Card rendering logic
+│
+├── data/                        # Data management layer
+│   ├── useCS2Data.ts            # CS2 items API integration
+│   ├── useSeedSystem.ts         # Seed generation and validation
+│   └── useGamePersistence.ts    # Local storage management
+│
+└── sync/                        # Synchronization layer
+    └── useGameSync.ts           # State-to-canvas synchronization
+```
+
+### Application Flow
+
+#### 1. **Initialization Flow**
+
+```
+pages/index.vue
+    ↓
+[Loading Screen] → GameController.initializeGame()
+    ↓
+CS2Data.load() → SeedSystem.init() → Game.prepare()
+    ↓
+[Main Interface] → GameInterface.vue
+```
+
+#### 2. **Game Start Flow**
+
+```
+User clicks "Start Game"
+    ↓
+GameController.startNewGame()
+    ↓
+SeedSystem.generateSeed() → CS2Data.getItemsForGame()
+    ↓
+Game.initializeCards() → Canvas.renderCards()
+    ↓
+[Game Playing State]
+```
+
+#### 3. **Card Selection Flow**
+
+```
+User clicks card on canvas
+    ↓
+Canvas.handleClick() → Game.selectCard()
+    ↓
+CardStore.updateState() → GameSync.queueSyncEvent()
+    ↓
+Canvas.updateVisualState() → [Flip Animation]
+    ↓
+Game.checkForMatch() → [Match Logic]
+```
+
+#### 4. **Real-time Synchronization**
+
+```
+Game State Changes (Pinia Stores)
+    ↓
+GameSync.watchChanges() → Event Queue
+    ↓
+Batch Processing → Canvas Updates
+    ↓
+Visual Effects → User Feedback
+```
+
+#### 5. **Data Persistence Flow**
+
+```
+Game State Changes
+    ↓
+Auto-save Timer → GamePersistence.save()
+    ↓
+localStorage → State Recovery on reload
+```
+
+**Key Architectural Principles:**
+
+- **Separation of Concerns**: UI, game logic, rendering, and data layers are independent
+- **Event-Driven Architecture**: Real-time synchronization between state and visuals
+- **Performance Optimization**: Object pooling, batched updates, and efficient rendering
+- **Type Safety**: Full TypeScript integration with strict type checking
+- **Composable Design**: Reusable logic through Vue 3 Composition API
+- **Error Boundaries**: Graceful error handling at component and system levels
+
+This architecture ensures the game remains performant, maintainable, and extensible while providing a smooth user experience across all devices.
 
 ## Getting Started Locally
 

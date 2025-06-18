@@ -1,41 +1,37 @@
 <template>
-  <div class="game-canvas-container" ref="containerRef">
+  <div ref="containerRef" class="game-canvas-container">
     <canvas
       ref="canvasElement"
       :width="canvasSize.width"
       :height="canvasSize.height"
+      class="game-canvas"
       @click="handleCanvasClick"
+      @mousemove="handleMouseMove"
       @touchstart="handleTouchStart"
       @touchend="handleTouchEnd"
-      @mousemove="handleMouseMove"
-      class="game-canvas"
     />
     <div v-if="!isInitialized" class="canvas-loading">Initializing game...</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import {
-  ref,
-  onMounted,
-  onUnmounted,
-  nextTick,
-  computed,
-  useTemplateRef,
-} from "vue";
-import { useGameEngine } from "~/composables/useGameEngine";
-import { useCanvasLayout } from "~/composables/useCanvasLayout";
+import { ref, computed, useTemplateRef, onMounted } from "vue";
+import { useGameEngine } from "~/composables/engine/useGameEngine";
+import { useCanvasLayout } from "~/composables/engine/useCanvasLayout";
 import { useGameCoreStore } from "~/stores/game/core";
 import { useGameCardsStore } from "~/stores/game/cards";
+import type { CanvasRenderer } from "~/services/CanvasRenderer";
 
 // Props
 interface Props {
   enableParallax?: boolean;
+  enableSound?: boolean;
   debugMode?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   enableParallax: true,
+  enableSound: true,
   debugMode: false,
 });
 
@@ -43,19 +39,21 @@ const props = withDefaults(defineProps<Props>(), {
 const canvasElement = useTemplateRef<HTMLCanvasElement>("canvasElement");
 const containerRef = useTemplateRef<HTMLDivElement>("containerRef");
 
-// Composables
+// Composables and stores
 const gameEngine = useGameEngine();
 const canvasLayout = useCanvasLayout();
 const gameStore = useGameCoreStore();
 const cardsStore = useGameCardsStore();
 
-// Reactive state
+// State
 const isInitialized = ref(false);
-const canvasSize = computed(() => canvasLayout.canvasSize.value);
-const mousePosition = ref({ x: 0, y: 0 });
+const canvasRenderer = ref<CanvasRenderer | null>(null);
 
-// Event handlers
-const handleCanvasClick = (event: MouseEvent) => {
+// Computed properties
+const canvasSize = computed(() => canvasLayout.canvasSize.value);
+
+// Event handlers - simplified direct implementation
+function handleCanvasClick(event: MouseEvent) {
   if (!isInitialized.value || !canvasElement.value) return;
 
   const rect = canvasElement.value.getBoundingClientRect();
@@ -70,9 +68,24 @@ const handleCanvasClick = (event: MouseEvent) => {
   if (clickedCardId) {
     handleCardClick(clickedCardId);
   }
-};
+}
 
-const handleTouchStart = (event: TouchEvent) => {
+function handleMouseMove(event: MouseEvent) {
+  if (!props.enableParallax || !canvasElement.value) return;
+
+  const rect = canvasElement.value.getBoundingClientRect();
+  const centerX = rect.width / 2;
+  const centerY = rect.height / 2;
+
+  const normalizedCoords = {
+    x: (event.clientX - rect.left - centerX) / centerX,
+    y: (event.clientY - rect.top - centerY) / centerY,
+  };
+
+  gameEngine.setParallaxOffset(normalizedCoords);
+}
+
+function handleTouchStart(event: TouchEvent) {
   event.preventDefault();
   if (event.touches.length === 1) {
     const touch = event.touches[0];
@@ -82,28 +95,13 @@ const handleTouchStart = (event: TouchEvent) => {
     });
     handleCanvasClick(mouseEvent);
   }
-};
+}
 
-const handleTouchEnd = (event: TouchEvent) => {
+function handleTouchEnd(event: TouchEvent) {
   event.preventDefault();
-};
+}
 
-const handleMouseMove = (event: MouseEvent) => {
-  if (!props.enableParallax || !canvasElement.value) return;
-
-  const rect = canvasElement.value.getBoundingClientRect();
-  const centerX = rect.width / 2;
-  const centerY = rect.height / 2;
-
-  mousePosition.value = {
-    x: (event.clientX - rect.left - centerX) / centerX,
-    y: (event.clientY - rect.top - centerY) / centerY,
-  };
-
-  gameEngine.setParallaxOffset(mousePosition.value);
-};
-
-const handleCardClick = (cardId: string) => {
+function handleCardClick(cardId: string) {
   if (!gameStore.isPlaying) {
     gameStore.startGame();
   }
@@ -125,41 +123,16 @@ const handleCardClick = (cardId: string) => {
       }
     }, 300);
   }
-};
+}
 
-// Resize observer for responsive behavior
-let resizeObserver: ResizeObserver | null = null;
-
-const setupResizeObserver = () => {
-  if (typeof window === "undefined" || !containerRef.value) return;
-
-  resizeObserver = new ResizeObserver((entries) => {
-    for (const entry of entries) {
-      const { width, height } = entry.contentRect;
-      canvasLayout.updateContainerSize(width, height);
-
-      if (gameStore.difficulty) {
-        canvasLayout.calculateLayout(gameStore.difficulty);
-      }
-    }
-  });
-
-  resizeObserver.observe(containerRef.value);
-};
-
-// Lifecycle hooks
-onMounted(async () => {
-  await nextTick();
-
+// Canvas initialization
+async function initializeCanvas() {
   if (!canvasElement.value || !containerRef.value) {
     console.error("Canvas element not found");
     return;
   }
 
   try {
-    // Setup responsive behavior
-    setupResizeObserver();
-
     // Initialize canvas layout
     if (gameStore.difficulty) {
       canvasLayout.calculateLayout(gameStore.difficulty);
@@ -167,30 +140,24 @@ onMounted(async () => {
 
     // Initialize game engine
     await gameEngine.init(canvasElement.value);
-
-    // Start rendering loop
     gameEngine.start();
 
     isInitialized.value = true;
-
     console.log("Game Canvas initialized successfully");
   } catch (error) {
     console.error("Failed to initialize game canvas:", error);
   }
-});
+}
 
-onUnmounted(() => {
-  gameEngine.stop();
-
-  if (resizeObserver) {
-    resizeObserver.disconnect();
-    resizeObserver = null;
-  }
+// Initialize canvas layout on mount
+onMounted(() => {
+  initializeCanvas();
 });
 
 // Expose canvas methods for parent components
 defineExpose({
   getCanvasElement: () => canvasElement.value,
+  getRenderer: () => canvasRenderer.value,
   isInitialized: () => isInitialized.value,
   getCanvasSize: () => canvasSize.value,
 });

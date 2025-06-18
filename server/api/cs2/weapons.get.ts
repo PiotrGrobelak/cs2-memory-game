@@ -16,14 +16,14 @@ export default defineEventHandler(async (event) => {
 
     if (!response.ok) {
       throw new Error(
-        `GitHub API request failed: ${response.status} ${response.statusText}`
+        `GitHub API request failed: ${response.status} ${response.statusText}`,
       );
     }
 
     const weaponsData = await response.json();
 
     console.log(
-      `Successfully fetched ${weaponsData.length} weapons from GitHub API`
+      `Successfully fetched ${weaponsData.length} weapons from GitHub API`,
     );
 
     // Set cache headers for better performance
