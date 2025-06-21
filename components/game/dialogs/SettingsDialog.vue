@@ -176,6 +176,6 @@ watch(
       selectedDifficulty.value = "easy";
       customSeed.value = "";
     }
-  },
+  }
 );
 </script>

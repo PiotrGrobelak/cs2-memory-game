@@ -9,6 +9,8 @@ Frontend - Nuxt with Vue for interactive components:
 - Pinia store for state management
 - LocalStorage for game persistence
 - Web Audio API for audio effects
+- VueUse for reusable composables
+- PixiJS for game rendering
 
 Testing - A comprehensive suite of tools for various testing types:
 

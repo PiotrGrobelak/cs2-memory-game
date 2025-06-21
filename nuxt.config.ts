@@ -12,6 +12,7 @@ export default defineNuxtConfig({
     "@nuxtjs/tailwindcss",
     "@nuxt/eslint",
     "@pinia/nuxt",
+    "@vueuse/nuxt",
   ],
 
   css: ["primeicons/primeicons.css"],
@@ -27,5 +28,19 @@ export default defineNuxtConfig({
   // TypeScript Configuration
   typescript: {
     typeCheck: true,
+  },
+
+  // // PixiJS Configuration for optimal performance
+  // build: {
+  //   transpile: ["pixi.js"],
+  // },
+
+  vite: {
+    optimizeDeps: {
+      include: ["pixi.js"],
+    },
+    define: {
+      global: "globalThis",
+    },
   },
 });

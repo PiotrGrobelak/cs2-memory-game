@@ -121,12 +121,13 @@ composables/
 │   ├── useGame.ts               # Core game mechanics
 │   └── useGameLoader.ts         # Game initialization
 │
-├── engine/                      # Rendering engine layer
-│   ├── useGameEngine.ts         # HTML5 Canvas engine
-│   ├── useCanvasLayout.ts       # Layout calculations
-│   ├── useCanvasObjects.ts      # Object pooling system
-│   ├── useCanvasInteraction.ts  # User interaction handling
-│   └── useCardRenderer.ts       # Card rendering logic
+├── engine/                      # PixiJS rendering engine layer
+│   ├── useGameEngine.ts         # PixiJS Application engine
+│   ├── useLayoutEngine.ts       # Layout calculations and positioning
+│   ├── useGameCardRenderer.ts   # PixiJS card rendering logic
+│   ├── useGameInteractions.ts   # PixiJS interaction handling
+│   ├── useGameAnimations.ts     # PixiJS animations and effects
+│   └── useCardRenderer.ts       # Legacy card rendering (deprecated)
 │
 ├── data/                        # Data management layer
 │   ├── useCS2Data.ts            # CS2 items API integration
@@ -134,7 +135,7 @@ composables/
 │   └── useGamePersistence.ts    # Local storage management
 │
 └── sync/                        # Synchronization layer
-    └── useGameSync.ts           # State-to-canvas synchronization
+    └── useGameSync.ts           # State-to-PixiJS synchronization
 ```
 
 ### Application Flow
@@ -160,7 +161,7 @@ GameController.startNewGame()
     ↓
 SeedSystem.generateSeed() → CS2Data.getItemsForGame()
     ↓
-Game.initializeCards() → Canvas.renderCards()
+Game.initializeCards() → PixiJS.renderCards()
     ↓
 [Game Playing State]
 ```
@@ -168,13 +169,13 @@ Game.initializeCards() → Canvas.renderCards()
 #### 3. **Card Selection Flow**
 
 ```
-User clicks card on canvas
+User clicks card on PixiJS stage
     ↓
-Canvas.handleClick() → Game.selectCard()
+PixiJS.handleClick() → Game.selectCard()
     ↓
 CardStore.updateState() → GameSync.queueSyncEvent()
     ↓
-Canvas.updateVisualState() → [Flip Animation]
+PixiJS.updateVisualState() → [Flip Animation]
     ↓
 Game.checkForMatch() → [Match Logic]
 ```
@@ -186,7 +187,7 @@ Game State Changes (Pinia Stores)
     ↓
 GameSync.watchChanges() → Event Queue
     ↓
-Batch Processing → Canvas Updates
+Batch Processing → PixiJS Updates
     ↓
 Visual Effects → User Feedback
 ```

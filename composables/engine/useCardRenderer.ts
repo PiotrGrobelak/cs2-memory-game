@@ -1,868 +1,307 @@
-/**
- * useCardRenderer - Advanced card rendering system for CS2-themed memory cards
- *
- * This composable handles the visual rendering of individual cards with rich effects:
- * - Renders CS2 weapon skin cards with rarity-based visual styling
- * - Implements flip animations with realistic 3D-like effects
- * - Creates rarity-specific gradients and glow effects (Consumer, Classified, Covert, etc.)
- * - Manages parallax movement and depth effects
- * - Handles card state transitions (hidden, revealed, matched, selected)
- * - Optimizes rendering performance with gradient caching and batching
- *
- * Key features:
- * - Rarity-based visual themes matching CS2 item rarities
- * - Smooth flip animations with configurable easing functions
- * - Parallax depth effects for immersive 3D feel
- * - Performance-optimized rendering with canvas gradient caching
- * - Responsive card scaling and text truncation
- * - Visual feedback for user interactions (hover, selection, matching)
- */
-import { ref, reactive } from "vue";
-import type { GameCard, ItemRarity } from "~/types/game";
-import { imageLoader } from "~/services/ImageLoader";
-
-// Card rendering configuration
-interface CardRenderConfig {
-  flipDuration: number;
-  parallaxStrength: number;
-  borderRadius: number;
-  shadowBlur: number;
-  gradientAngle: number;
-}
-
-// Card visual state
-interface CardVisualState {
-  flipProgress: number;
-  isFlipping: boolean;
-  flipDirection: "front" | "back";
-  parallaxOffset: { x: number; y: number };
-  scale: number;
-  rotation: number;
-  opacity: number;
-}
-
-// Rarity gradient configuration
-interface RarityGradient {
-  colors: [string, string];
-  glowColor: string;
-  borderColor: string;
-  animation?: {
-    type: "pulse" | "shift" | "glow";
-    duration: number;
-  };
-}
-
-// Pre-computed gradient cache
-interface GradientCache {
-  [key: string]: CanvasGradient;
-}
-
-// Card animation easing functions
-type EasingFunction = (t: number) => number;
+import { ref, computed } from "vue";
+import { Assets, Container, Graphics, Sprite, Text } from "pixi.js";
+import type { Texture } from "pixi.js";
+import type { Card } from "~/types/pixi";
+import type { GameCard } from "~/types/game";
 
 export const useCardRenderer = () => {
-  // Rendering configuration
-  const config = reactive<CardRenderConfig>({
-    flipDuration: 300, // ms
-    parallaxStrength: 0.02,
-    borderRadius: 8,
-    shadowBlur: 4,
-    gradientAngle: 45, // degrees
-  });
+  const cardSprites = ref<Map<string, Card>>(new Map());
+  const _textureCache = ref<Map<string, Texture>>(new Map());
 
-  // Gradient cache for performance
-  const gradientCache = ref<Map<string, GradientCache>>(new Map());
-
-  // Canvas context cache for reuse
-  const contextCache = ref<Map<string, CanvasRenderingContext2D>>(new Map());
-
-  // Rarity gradient definitions
-  const rarityGradients: Record<ItemRarity, RarityGradient> = {
-    consumer: {
-      colors: ["#b0c3d9", "#ffffff"],
-      glowColor: "#b0c3d9",
-      borderColor: "#7f8c8d",
-    },
-    industrial: {
-      colors: ["#5e98d9", "#ffffff"],
-      glowColor: "#3498db",
-      borderColor: "#2980b9",
-    },
-    milSpec: {
-      colors: ["#4b69ff", "#8847ff"],
-      glowColor: "#6c5ce7",
-      borderColor: "#5f3dc4",
-      animation: {
-        type: "pulse",
-        duration: 2000,
-      },
-    },
-    restricted: {
-      colors: ["#8847ff", "#d32ce6"],
-      glowColor: "#e84393",
-      borderColor: "#d63031",
-      animation: {
-        type: "shift",
-        duration: 3000,
-      },
-    },
-    classified: {
-      colors: ["#d32ce6", "#eb4b4b"],
-      glowColor: "#fd79a8",
-      borderColor: "#e84393",
-      animation: {
-        type: "glow",
-        duration: 1500,
-      },
-    },
-    covert: {
-      colors: ["#eb4b4b", "#e4ae39"],
-      glowColor: "#fdcb6e",
-      borderColor: "#e17055",
-      animation: {
-        type: "shift",
-        duration: 2500,
-      },
-    },
-    contraband: {
-      colors: ["#e4ae39", "#ffd700"],
-      glowColor: "#fdcb6e",
-      borderColor: "#f39c12",
-      animation: {
-        type: "glow",
-        duration: 1000,
-      },
-    },
+  // Rarity gradient colors
+  const rarityGradients = {
+    consumer: [0x808080, 0x606060],
+    industrial: [0x5dade2, 0x3498db],
+    milSpec: [0x8e44ad, 0x663399],
+    restricted: [0xe74c3c, 0xc0392b],
+    classified: [0xf39c12, 0xe67e22],
+    covert: [0xe91e63, 0xad1457],
+    contraband: [0xffd700, 0xffa500],
   };
 
-  // Animation easing functions
-  const easingFunctions: Record<string, EasingFunction> = {
-    easeInOut: (t: number) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
-    easeOut: (t: number) => 1 - Math.pow(1 - t, 3),
-    easeIn: (t: number) => t * t * t,
-    bounce: (t: number) => {
-      if (t < 1 / 2.75) {
-        return 7.5625 * t * t;
-      } else if (t < 2 / 2.75) {
-        return 7.5625 * (t -= 1.5 / 2.75) * t + 0.75;
-      } else if (t < 2.5 / 2.75) {
-        return 7.5625 * (t -= 2.25 / 2.75) * t + 0.9375;
-      } else {
-        return 7.5625 * (t -= 2.625 / 2.75) * t + 0.984375;
-      }
-    },
+  // Function to create card back
+  const createBackCard = (cardWidth: number, cardHeight: number): Container => {
+    const cardBack = new Container();
+
+    // Create background
+    const background = new Graphics();
+    background
+      .roundRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 10)
+      .fill(0x2563eb) // Blue card back
+      .stroke({ color: 0x1e40af, width: 2 });
+    cardBack.addChild(background);
+
+    // Add back pattern (question mark or CS2 logo)
+    const backPattern = new Graphics();
+    backPattern.circle(0, 0, 30).fill(0x3b82f6);
+    cardBack.addChild(backPattern);
+
+    return cardBack;
   };
 
-  // Performance metrics
-  const renderStats = reactive({
-    cardsRendered: 0,
-    averageRenderTime: 0,
-    cacheHits: 0,
-    cacheMisses: 0,
-    frameTime: 0,
-  });
-
-  /**
-   * Render a single card with all visual effects
-   */
-  const renderCard = (
-    ctx: CanvasRenderingContext2D,
+  // Function to create card front with weapon image
+  const _createCardFront = async (
     card: GameCard,
-    position: { x: number; y: number },
-    size: { width: number; height: number },
-    visualState: CardVisualState,
-    timestamp: number = performance.now()
-  ): void => {
-    const startTime = performance.now();
+    cardWidth: number,
+    cardHeight: number
+  ): Promise<Container> => {
+    const cardFront = new Container();
 
-    ctx.save();
+    // Create background with rarity colors
+    const rarity = card.cs2Item?.rarity || "consumer";
+    const colors =
+      rarityGradients[rarity as keyof typeof rarityGradients] ||
+      rarityGradients.consumer;
 
-    // Preload image immediately when card is first rendered (regardless of state)
-    if (
-      !imageLoader.isImageLoaded(card.cs2Item.imageUrl) &&
-      !imageLoader.isImageLoading(card.cs2Item.imageUrl)
-    ) {
-      imageLoader
-        .loadImage(card.cs2Item.imageUrl, {
-          crossOrigin: "anonymous",
-          timeout: 10000, // 10 second timeout
-        })
-        .catch((error) => {
-          console.warn(
-            `Failed to preload weapon image for ${card.cs2Item.name}:`,
-            error
-          );
+    const background = new Graphics();
+    background
+      .roundRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 10)
+      .fill(colors[0])
+      .stroke({ color: colors[1], width: 2 });
+
+    cardFront.addChild(background);
+
+    // Load and add weapon image if available
+    const imageUrl = card.cs2Item?.imageUrl;
+    if (imageUrl) {
+      try {
+        // Create sprite directly from URL
+        const texture = await Assets.load(imageUrl);
+        const imageSprite = new Sprite(texture);
+
+        // Calculate image dimensions with padding
+        const padding = 15;
+        const maxWidth = cardWidth - padding * 2;
+        const maxHeight = cardHeight - padding * 2;
+
+        // Scale image to fit within card bounds
+        const scale = Math.min(
+          maxWidth / imageSprite.texture.width,
+          maxHeight / imageSprite.texture.height
+        );
+        imageSprite.scale.set(scale);
+
+        // // Center the image
+        // imageSprite.x = -imageSprite.width / 2;
+        // imageSprite.y = -imageSprite.height / 2;
+
+        // // // Set initial position (will be adjusted when loaded)
+        // imageSprite.x = -cardWidth / 4;
+        // imageSprite.y = -cardHeight / 4;
+
+        imageSprite.x = 0;
+        imageSprite.y = 0;
+        imageSprite.anchor.set(0.5);
+
+        // imageSprite.scale.set(0);
+        // imageSprite.alpha = 0;
+
+        cardFront.addChild(imageSprite);
+      } catch (error: unknown) {
+        // Fallback: show error text if sprite creation fails
+        const errorText = new Text({
+          text: `Image\nError: ${error instanceof Error ? error.message : "Unknown error"}`,
+          style: {
+            fontSize: 14,
+            fill: 0xff0000,
+            align: "center",
+            fontFamily: "Arial, sans-serif",
+          },
         });
-    }
 
-    // Apply transforms
-    applyCardTransforms(ctx, position, size, visualState);
-
-    // Render based on card state
-    if (
-      card.state === "hidden" ||
-      (visualState.isFlipping && visualState.flipProgress < 0.5)
-    ) {
-      renderCardBack(ctx, size, card.cs2Item.rarity, timestamp, card.id);
+        errorText.x = -errorText.width / 2;
+        errorText.y = -errorText.height / 2;
+        cardFront.addChild(errorText);
+      }
     } else {
-      renderCardFront(ctx, card, size, timestamp);
+      // Fallback: show weapon name if no image URL
+      const weaponName = card.cs2Item?.name || "Unknown";
+      const nameText = new Text({
+        text: weaponName,
+        style: {
+          fontSize: 12,
+          fill: 0xffffff,
+          align: "center",
+          fontFamily: "Arial, sans-serif",
+          wordWrap: true,
+          wordWrapWidth: cardWidth - 20,
+        },
+      });
+
+      nameText.x = -nameText.width / 2;
+      nameText.y = -nameText.height / 2;
+      cardFront.addChild(nameText);
     }
 
-    ctx.restore();
-
-    // Update performance stats
-    const renderTime = performance.now() - startTime;
-    updateRenderStats(renderTime);
+    return cardFront;
   };
 
-  /**
-   * Apply card transforms (scale, rotation, position)
-   */
-  const applyCardTransforms = (
-    ctx: CanvasRenderingContext2D,
-    position: { x: number; y: number },
-    size: { width: number; height: number },
-    visualState: CardVisualState
-  ): void => {
-    const centerX = position.x + size.width / 2;
-    const centerY = position.y + size.height / 2;
-
-    // Translate to card center
-    ctx.translate(centerX, centerY);
-
-    // Apply parallax offset
-    ctx.translate(visualState.parallaxOffset.x, visualState.parallaxOffset.y);
-
-    // Apply scale
-    ctx.scale(visualState.scale, visualState.scale);
-
-    // Apply rotation
-    ctx.rotate((visualState.rotation * Math.PI) / 180);
-
-    // Apply flip transformation
-    if (visualState.isFlipping) {
-      const flipScale = Math.cos((visualState.flipProgress * Math.PI) / 2);
-      ctx.scale(Math.abs(flipScale), 1);
-    }
-
-    // Set opacity
-    ctx.globalAlpha = visualState.opacity;
-
-    // Translate back to top-left for drawing
-    ctx.translate(-size.width / 2, -size.height / 2);
-  };
-
-  /**
-   * Render card back with CS2 branding
-   */
-  const renderCardBack = (
-    ctx: CanvasRenderingContext2D,
-    size: { width: number; height: number },
-    rarity: ItemRarity,
-    timestamp: number,
-    cardId: string
-  ): void => {
-    // Draw background with animated rarity gradient
-    drawRarityBackground(ctx, 0, 0, size.width, size.height, rarity, timestamp);
-
-    // Draw card back pattern
-    drawCardBackPattern(ctx, size);
-
-    // Draw CS2 logo
-    drawCS2Logo(ctx, size);
-
-    // Draw card ID for debugging
-    drawCardId(ctx, cardId, size, "back");
-
-    // Draw border
-    drawCardBorder(ctx, 0, 0, size.width, size.height, rarity, false);
-  };
-
-  /**
-   * Render card front with CS2 item
-   */
-  const renderCardFront = (
-    ctx: CanvasRenderingContext2D,
+  const createCard = async (
     card: GameCard,
-    size: { width: number; height: number },
-    timestamp: number
-  ): void => {
-    // Draw background
-    drawRarityBackground(
-      ctx,
-      0,
-      0,
-      size.width,
-      size.height,
-      card.cs2Item.rarity,
-      timestamp
-    );
+    position: { x: number; y: number }
+  ) => {
+    const cardWidth = 120;
+    const cardHeight = 160;
 
-    // Draw item content area
-    drawItemContent(ctx, card, size);
+    // Create container for card
+    const cardObject = Object.assign(new Container(), {
+      cardId: card.id,
+      cardData: card,
+      isFlipping: false,
+      flipProgress: 0,
+      parallaxOffset: { x: 0, y: 0 },
+      originalPosition: { x: position.x, y: position.y }, // Store original position
+    }) as Card;
 
-    // Draw item name
-    drawItemName(ctx, card.cs2Item.name, size);
+    // Positioning
+    // cardObject.x = position.x;
+    // cardObject.y = position.y;
+    cardObject.x = position.x + cardWidth / 2;
+    cardObject.y = position.y + cardHeight / 2;
+    cardObject.pivot.set(cardWidth / 2, cardHeight / 2);
 
-    // Draw rarity indicator
-    drawRarityIndicator(ctx, card.cs2Item.rarity, size);
+    // Create card back using the extracted function
+    const cardBack = createBackCard(cardWidth, cardHeight);
 
-    // Draw card ID for debugging
-    drawCardId(ctx, card.id, size, "front");
+    // Create card front with weapon image (hidden initially)
+    // const cardFront = await createCardFront(card, cardWidth, cardHeight);
+    // cardFront.alpha = 0; // Hidden initially
+    // cardObject.addChild(cardFront);
+    cardObject.addChild(cardBack);
 
-    // Draw border (highlighted for revealed/matched)
-    const isHighlighted = card.state === "revealed" || card.state === "matched";
-    drawCardBorder(
-      ctx,
-      0,
-      0,
-      size.width,
-      size.height,
-      card.cs2Item.rarity,
-      isHighlighted
-    );
+    // Store references to card faces
+    // cardObject.cardFront = cardFront;
+    // cardObject.cardBack = cardBack;
+
+    // Add to cache
+    cardSprites.value.set(card.id, cardObject);
+
+    return cardObject;
   };
 
-  /**
-   * Draw rarity-based background gradient
-   */
-  const drawRarityBackground = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    rarity: ItemRarity,
-    timestamp: number
-  ): void => {
-    const rarityConfig = rarityGradients[rarity];
+  const updateCardState = (cardId: string, state: GameCard["state"]) => {
+    console.log("Run updateCardState");
+    const sprite = cardSprites.value.get(cardId);
+    if (!sprite) return;
 
-    // Get or create gradient
-    const gradientKey = `${rarity}-${width}-${height}`;
-    let gradient = getGradientFromCache(ctx, gradientKey);
-
-    if (!gradient) {
-      gradient = createRarityGradient(ctx, x, y, width, height, rarity);
-      cacheGradient(gradientKey, gradient);
-    }
-
-    // Apply animation if configured
-    if (rarityConfig.animation) {
-      const animationOffset = calculateAnimationOffset(
-        timestamp,
-        rarityConfig.animation
-      );
-      ctx.save();
-      ctx.globalAlpha = 0.8 + 0.2 * animationOffset;
-    }
-
-    ctx.fillStyle = gradient;
-    drawRoundedRect(ctx, x, y, width, height, config.borderRadius);
-    ctx.fill();
-
-    if (rarityConfig.animation) {
-      ctx.restore();
+    // Flip animation based on state
+    switch (state) {
+      case "revealed":
+        animateFlip(sprite as Card, true);
+        break;
+      case "hidden":
+        animateFlip(sprite as Card, false);
+        break;
+      case "matched":
+        animateMatch(sprite as Card);
+        break;
     }
   };
 
-  /**
-   * Create rarity gradient
-   */
-  const createRarityGradient = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    rarity: ItemRarity
-  ): CanvasGradient => {
-    const rarityConfig = rarityGradients[rarity];
-    const angle = (config.gradientAngle * Math.PI) / 180;
+  const animateFlip = (sprite: Card, reveal: boolean) => {
+    console.log("Run animateFlip");
+    if (sprite.isFlipping) return; // Prevent multiple animations
 
-    const endX = x + Math.cos(angle) * width;
-    const endY = y + Math.sin(angle) * height;
+    sprite.isFlipping = true;
+    const cardBack = sprite.cardBack;
+    const cardFront = sprite.cardFront;
 
-    const gradient = ctx.createLinearGradient(x, y, endX, endY);
-    gradient.addColorStop(0, rarityConfig.colors[0]);
-    gradient.addColorStop(1, rarityConfig.colors[1]);
-
-    return gradient;
-  };
-
-  /**
-   * Draw card back pattern
-   */
-  const drawCardBackPattern = (
-    ctx: CanvasRenderingContext2D,
-    size: { width: number; height: number }
-  ): void => {
-    const patternSize = Math.min(size.width, size.height) * 0.6;
-    const centerX = size.width / 2;
-    const centerY = size.height / 2;
-
-    ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
-
-    // Draw geometric pattern
-    for (let i = 0; i < 3; i++) {
-      const radius = (patternSize / 3) * (i + 1);
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-      ctx.stroke();
+    if (!cardBack || !cardFront) {
+      sprite.isFlipping = false;
+      return;
     }
-  };
 
-  /**
-   * Draw CS2 logo
-   */
-  const drawCS2Logo = (
-    ctx: CanvasRenderingContext2D,
-    size: { width: number; height: number }
-  ): void => {
-    const centerX = size.width / 2;
-    const centerY = size.height / 2;
+    let progress = 0;
+    const duration = 0.5; // 500ms animation
+    const startTime = Date.now();
 
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `bold ${Math.min(size.width, size.height) * 0.15}px Arial`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+    const animate = () => {
+      const elapsed = (Date.now() - startTime) / 1000;
+      progress = Math.min(elapsed / duration, 1);
 
-    // Add shadow for better visibility
-    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-    ctx.shadowBlur = 4;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
+      // Calculate scale for flip effect (goes from 1 to 0 to 1)
+      const scale = Math.abs(Math.cos(progress * Math.PI));
+      sprite.scale.x = scale;
 
-    ctx.fillText("CS2", centerX, centerY);
-
-    // Reset shadow
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-  };
-
-  /**
-   * Draw item content area with actual CS2 weapon image
-   */
-  const drawItemContent = (
-    ctx: CanvasRenderingContext2D,
-    card: GameCard,
-    size: { width: number; height: number }
-  ): void => {
-    const contentMargin = 8;
-    const contentWidth = size.width - contentMargin * 2;
-    const contentHeight = size.height * 0.6;
-    const contentX = contentMargin;
-    const contentY = contentMargin;
-
-    // Draw content background
-    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-    drawRoundedRect(ctx, contentX, contentY, contentWidth, contentHeight, 4);
-    ctx.fill();
-
-    // Calculate image dimensions
-    const imageSize = Math.min(contentWidth, contentHeight) * 0.8;
-    const imageX = contentX + (contentWidth - imageSize) / 2;
-    const imageY = contentY + (contentHeight - imageSize) / 2;
-
-    // Try to get the weapon image
-    const weaponImage = imageLoader.getCachedImage(card.cs2Item.imageUrl);
-
-    if (weaponImage) {
-      // Draw the actual weapon image
-      ctx.save();
-
-      // Create clipping path for rounded corners
-      ctx.beginPath();
-      ctx.roundRect(imageX, imageY, imageSize, imageSize, 4);
-      ctx.clip();
-
-      // Calculate scaling to fit image while maintaining aspect ratio
-      const scale = Math.min(
-        imageSize / weaponImage.width,
-        imageSize / weaponImage.height
-      );
-
-      const scaledWidth = weaponImage.width * scale;
-      const scaledHeight = weaponImage.height * scale;
-
-      // Center the scaled image
-      const drawX = imageX + (imageSize - scaledWidth) / 2;
-      const drawY = imageY + (imageSize - scaledHeight) / 2;
-
-      // Draw the weapon image
-      ctx.drawImage(weaponImage, drawX, drawY, scaledWidth, scaledHeight);
-
-      ctx.restore();
-    } else if (imageLoader.isImageLoading(card.cs2Item.imageUrl)) {
-      // Show loading state
-      ctx.fillStyle = "#34495e";
-      drawRoundedRect(ctx, imageX, imageY, imageSize, imageSize, 4);
-      ctx.fill();
-
-      // Draw loading indicator (spinning circle)
-      const centerX = imageX + imageSize / 2;
-      const centerY = imageY + imageSize / 2;
-      const radius = imageSize * 0.1;
-
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius, 0, Math.PI * 1.5);
-      ctx.stroke();
-
-      // Draw loading text
-      ctx.fillStyle = "#ffffff";
-      ctx.font = `${imageSize * 0.08}px Arial`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("Loading...", centerX, centerY + radius + 15);
-    } else {
-      // Show placeholder or error state
-      ctx.fillStyle = "#34495e";
-      drawRoundedRect(ctx, imageX, imageY, imageSize, imageSize, 4);
-      ctx.fill();
-
-      // Draw placeholder weapon icon
-      ctx.fillStyle = "#ffffff";
-      ctx.font = `${imageSize * 0.3}px Arial`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-
-      // Choose icon based on weapon category
-      let icon = "🔫"; // Default weapon icon
-      if (card.cs2Item.category === "knife") {
-        icon = "🗡️";
-      } else if (card.cs2Item.category === "glove") {
-        icon = "🧤";
+      // Switch content at the middle of animation (when scale is near 0)
+      if (progress > 0.5) {
+        if (reveal) {
+          cardBack.alpha = 0;
+          cardFront.alpha = 1;
+        } else {
+          cardBack.alpha = 1;
+          cardFront.alpha = 0;
+        }
       }
 
-      ctx.fillText(icon, imageX + imageSize / 2, imageY + imageSize / 2);
-    }
+      sprite.flipProgress = progress;
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        sprite.isFlipping = false;
+        sprite.scale.x = 1; // Ensure final scale is 1
+      }
+    };
+
+    animate();
   };
 
-  /**
-   * Draw item name
-   */
-  const drawItemName = (
-    ctx: CanvasRenderingContext2D,
-    itemName: string,
-    size: { width: number; height: number }
-  ): void => {
-    const textY = size.height - 20;
-    const maxWidth = size.width - 16;
+  const animateMatch = (sprite: Card) => {
+    console.log("Run animateMatch");
+    // Success animation - pulsing
+    const originalScale = sprite.scale.y;
+    sprite.scale.set(originalScale * 1.2);
 
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `${Math.min(12, size.width * 0.08)}px Arial`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    // Add shadow for better readability
-    ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
-    ctx.shadowBlur = 2;
-
-    // Truncate text if too long
-    const truncatedName = truncateText(ctx, itemName, maxWidth);
-    ctx.fillText(truncatedName, size.width / 2, textY);
-
-    // Reset shadow
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
+    setTimeout(() => {
+      sprite.scale.set(originalScale);
+      sprite.alpha = 0.7; // Darken matched cards
+    }, 200);
   };
 
-  /**
-   * Draw rarity indicator
-   */
-  const drawRarityIndicator = (
-    ctx: CanvasRenderingContext2D,
-    rarity: ItemRarity,
-    size: { width: number; height: number }
-  ): void => {
-    const indicatorSize = 8;
-    const indicatorX = size.width - indicatorSize - 4;
-    const indicatorY = 4;
-
-    const rarityConfig = rarityGradients[rarity];
-
-    ctx.fillStyle = rarityConfig.glowColor;
-    ctx.beginPath();
-    ctx.arc(
-      indicatorX + indicatorSize / 2,
-      indicatorY + indicatorSize / 2,
-      indicatorSize / 2,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
-  };
-
-  /**
-   * Draw card border with rarity colors
-   */
-  const drawCardBorder = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    rarity: ItemRarity,
-    highlighted: boolean
-  ): void => {
-    const rarityConfig = rarityGradients[rarity];
-
-    ctx.strokeStyle = highlighted
-      ? rarityConfig.glowColor
-      : rarityConfig.borderColor;
-    ctx.lineWidth = highlighted ? 3 : 2;
-
-    if (highlighted) {
-      ctx.shadowColor = rarityConfig.glowColor;
-      ctx.shadowBlur = 8;
-    }
-
-    drawRoundedRect(ctx, x, y, width, height, config.borderRadius);
-    ctx.stroke();
-
-    // Reset shadow
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-  };
-
-  /**
-   * Draw rounded rectangle
-   */
-  const drawRoundedRect = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    radius: number
-  ): void => {
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-  };
-
-  /**
-   * Calculate animation offset for rarity effects
-   */
-  const calculateAnimationOffset = (
-    timestamp: number,
-    animation: { type: string; duration: number }
-  ): number => {
-    const progress = (timestamp % animation.duration) / animation.duration;
-
-    switch (animation.type) {
-      case "pulse":
-        return (Math.sin(progress * Math.PI * 2) + 1) / 2;
-      case "glow":
-        return Math.abs(Math.sin(progress * Math.PI));
-      case "shift":
-        return easingFunctions.easeInOut(progress);
-      default:
-        return 0;
-    }
-  };
-
-  /**
-   * Create card visual state with animation
-   */
-  const createCardVisualState = (
-    flipProgress: number = 0,
-    isFlipping: boolean = false,
-    parallaxOffset: { x: number; y: number } = { x: 0, y: 0 }
-  ): CardVisualState => ({
-    flipProgress,
-    isFlipping,
-    flipDirection: flipProgress < 0.5 ? "back" : "front",
-    parallaxOffset,
-    scale: 1,
-    rotation: 0,
-    opacity: 1,
-  });
-
-  /**
-   * Update flip animation
-   */
-  const updateFlipAnimation = (
-    visualState: CardVisualState,
-    deltaTime: number,
-    easingType: string = "easeInOut"
-  ): void => {
-    if (!visualState.isFlipping) return;
-
-    const progress = Math.min(
-      1,
-      visualState.flipProgress + deltaTime / config.flipDuration
-    );
-    visualState.flipProgress = easingFunctions[easingType](progress);
-
-    if (visualState.flipProgress >= 1) {
-      visualState.isFlipping = false;
-      visualState.flipProgress = 1;
-    }
-  };
-
-  /**
-   * Start flip animation
-   */
-  const startFlipAnimation = (visualState: CardVisualState): void => {
-    visualState.isFlipping = true;
-    visualState.flipProgress = 0;
-  };
-
-  /**
-   * Truncate text to fit width
-   */
-  const truncateText = (
-    ctx: CanvasRenderingContext2D,
-    text: string,
-    maxWidth: number
-  ): string => {
-    const metrics = ctx.measureText(text);
-    if (metrics.width <= maxWidth) return text;
-
-    let truncated = text;
-    while (
-      ctx.measureText(truncated + "...").width > maxWidth &&
-      truncated.length > 0
-    ) {
-      truncated = truncated.slice(0, -1);
-    }
-
-    return truncated + "...";
-  };
-
-  /**
-   * Gradient caching utilities
-   */
-  const getGradientFromCache = (
-    ctx: CanvasRenderingContext2D,
-    key: string
-  ): CanvasGradient | null => {
-    const canvasKey = getCanvasKey(ctx);
-    const canvasCache = gradientCache.value.get(canvasKey);
-
-    if (canvasCache && canvasCache[key]) {
-      renderStats.cacheHits++;
-      return canvasCache[key];
-    }
-
-    renderStats.cacheMisses++;
-    return null;
-  };
-
-  const cacheGradient = (_key: string, _gradient: CanvasGradient): void => {
-    // Implementation would require canvas context identification
-    // For now, skip caching to avoid complexity
-  };
-
-  const getCanvasKey = (_ctx: CanvasRenderingContext2D): string => {
-    // Simple canvas identification - in real implementation would use WeakMap
-    return "default";
-  };
-
-  /**
-   * Update render statistics
-   */
-  const updateRenderStats = (renderTime: number): void => {
-    renderStats.cardsRendered++;
-    renderStats.averageRenderTime =
-      (renderStats.averageRenderTime + renderTime) / 2;
-    renderStats.frameTime = renderTime;
-  };
-
-  /**
-   * Clear render cache
-   */
-  const clearCache = (): void => {
-    gradientCache.value.clear();
-    contextCache.value.clear();
-    console.log("Card renderer cache cleared");
-  };
-
-  /**
-   * Get rendering statistics
-   */
-  const getRenderStats = () => ({
-    ...renderStats,
-    cacheSize: gradientCache.value.size,
-    cacheEfficiency:
-      renderStats.cacheHits /
-        (renderStats.cacheHits + renderStats.cacheMisses) || 0,
-  });
-
-  /**
-   * Draw card ID for debugging purposes
-   */
-  const drawCardId = (
-    ctx: CanvasRenderingContext2D,
+  const applyParallaxEffect = (
     cardId: string,
-    size: { width: number; height: number },
-    side: "front" | "back"
-  ): void => {
-    ctx.save();
+    mouseX: number,
+    mouseY: number,
+    _canvasWidth: number,
+    _canvasHeight: number
+  ) => {
+    console.log("Run applyParallaxEffect");
+    const sprite = cardSprites.value.get(cardId) as Card;
+    if (!sprite || !sprite.originalPosition) return;
 
-    // Position at bottom of card
-    const x = size.width / 2;
-    const y = size.height - 4;
+    // Calculate distance from mouse to card center
+    const cardCenterX = sprite.originalPosition.x;
+    const cardCenterY = sprite.originalPosition.y;
 
-    // Set smaller text style
-    ctx.fillStyle = side === "back" ? "#ffffff" : "#000000";
-    ctx.font = "8px monospace"; // Reduced from 10px to 8px
-    ctx.textAlign = "center";
-    ctx.textBaseline = "bottom";
+    // Calculate distance from mouse to card
+    const distanceX = mouseX - cardCenterX;
+    const distanceY = mouseY - cardCenterY;
 
-    // Add background for better readability (smaller)
-    const text = `${cardId.substring(0)}`; // Show chars after first 4
-    const textMetrics = ctx.measureText(text);
-    const bgWidth = textMetrics.width + 4; // Reduced padding
-    const bgHeight = 10; // Reduced height
+    // Maximum distance for effect (adjust this value to control the effect radius)
+    const maxDistance = 200; // Increased for wider effect area
+    const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
 
-    ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; // More transparent
-    ctx.fillRect(x - bgWidth / 2, y - bgHeight, bgWidth, bgHeight);
+    // Calculate effect strength based on distance (closer = stronger effect)
+    const effectStrength = Math.max(0, 1 - distance / maxDistance);
 
-    // Draw text
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(text, x, y - 1);
+    // Calculate parallax offset based on mouse position relative to card
+    const parallaxStrength = 0.8; // Significantly increased for more visible effect
+    const offsetX =
+      (distanceX / maxDistance) * parallaxStrength * effectStrength * 50; // Increased multiplier
+    const offsetY =
+      (distanceY / maxDistance) * parallaxStrength * effectStrength * 50; // Increased multiplier
 
-    ctx.restore();
+    sprite.parallaxOffset = { x: offsetX, y: offsetY };
+    // Use original position as base, not current position
+    sprite.x = sprite.originalPosition.x + offsetX;
+    sprite.y = sprite.originalPosition.y + offsetY;
   };
 
   return {
-    // Configuration
-    config,
-    rarityGradients,
-
-    // Core rendering
-    renderCard,
-    renderCardBack,
-    renderCardFront,
-
-    // Visual state management
-    createCardVisualState,
-    updateFlipAnimation,
-    startFlipAnimation,
-
-    // Utility functions
-    drawRoundedRect,
-    truncateText,
-
-    // Performance and caching
-    clearCache,
-    getRenderStats,
-    renderStats,
-
-    // Animation easing
-    easingFunctions,
+    cardSprites: computed(() => cardSprites.value),
+    createCard,
+    updateCardState,
+    applyParallaxEffect,
   };
 };

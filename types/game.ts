@@ -90,6 +90,22 @@ export interface CS2ApiResponse {
   hasNext: boolean;
 }
 
+// Addition for Canvas rendering - New types for Canvas rendering
+export interface CanvasRenderingOptions {
+  enableParallax: boolean;
+  enableAnimations: boolean;
+  enableShadows: boolean;
+  qualityLevel: "low" | "medium" | "high";
+}
+
+export interface CardRenderingData {
+  position: { x: number; y: number };
+  scale: number;
+  rotation: number;
+  opacity: number;
+  zIndex: number;
+}
+
 // Local Storage Keys
 export const STORAGE_KEYS = {
   GAME_STATE: "cs2-memory-game-state",
