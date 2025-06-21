@@ -7,7 +7,7 @@
         <div class="flex items-center gap-3">
           <i
             class="pi pi-info-circle text-blue-600 dark:text-blue-400 text-xl"
-          ></i>
+          />
           <div>
             <h4 class="text-blue-800 dark:text-blue-200 font-semibold mb-1">
               Unfinished Game Found
