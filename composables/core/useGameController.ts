@@ -43,8 +43,13 @@ export const useGameController = () => {
   // Initialize composables
   const toast = useToast();
   const { initializeData } = useCS2Data();
-  const { loadGameHistory, saveGameState, loadGameState, deleteGameState } =
-    useGamePersistence();
+  const {
+    loadGameHistory,
+    saveGameState,
+    loadGameState,
+    deleteGameState,
+    saveGameResult,
+  } = useGamePersistence();
 
   // Initialize stores
   const uiStore = useGameUIStore();
@@ -468,21 +473,12 @@ export const useGameController = () => {
 
   // Settings handler
   const handleSettingsApply = async (settings: {
-    difficulty: "easy" | "medium" | "hard";
-    seed?: string;
     enableSound: boolean;
     enableParallax: boolean;
   }) => {
     try {
       uiStore.updateUIOption("enableSound", settings.enableSound);
       uiStore.updateUIOption("enableParallax", settings.enableParallax);
-
-      await startNewGame({
-        difficulty: settings.difficulty,
-        seed: settings.seed,
-        enableSound: settings.enableSound,
-        enableParallax: settings.enableParallax,
-      });
 
       closeDialog("settings");
       toast.add({
@@ -575,6 +571,28 @@ export const useGameController = () => {
           });
 
           timerStore.stopTimer();
+
+          // Save completed game to history collection (US-014)
+          try {
+            const gameResult = {
+              id: `${coreStore.seed}-${coreStore.difficulty.name}-${Date.now()}`,
+              seed: coreStore.seed,
+              difficulty: coreStore.difficulty.name,
+              moves: moves,
+              timeElapsed: timeElapsed,
+              completedAt: new Date(),
+              score: score,
+            };
+
+            const saveSuccess = await saveGameResult(gameResult);
+            if (saveSuccess) {
+              console.log("✅ Game result saved to history");
+            } else {
+              console.warn("⚠️ Failed to save game result to history");
+            }
+          } catch (error) {
+            console.error("❌ Error saving game result:", error);
+          }
 
           // Clear saved game state on completion
           await deleteGameState();

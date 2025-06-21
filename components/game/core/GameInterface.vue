@@ -223,8 +223,8 @@
 
     <SettingsDialog
       :visible="uiStore.dialogsState.settings"
-      :difficulties="difficulties"
-      :seed-validator="seedValidator"
+      :enable-sound="uiStore.uiOptions.enableSound"
+      :enable-parallax="uiStore.uiOptions.enableParallax"
       @close="uiStore.closeDialog('settings')"
       @apply="handleSettingsApply"
     />

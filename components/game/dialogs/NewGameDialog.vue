@@ -2,43 +2,38 @@
   <Dialog
     :visible="visible"
     header="Start New Game"
-    :modal="true"
-    :closable="true"
+    modal
     class="w-full max-w-lg"
-    @hide="handleCancel"
+    @update:visible="handleVisibilityChange"
   >
     <div class="space-y-4">
       <p class="text-gray-600 dark:text-gray-400">
         Configure your new game settings below:
       </p>
 
-      <!-- Quick Difficulty Buttons -->
+      <!-- Difficulty Selection -->
       <div>
-        <label class="block text-sm font-medium mb-3">
-          Select Difficulty
-        </label>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Card
+        <label class="block text-sm font-medium mb-2">Difficulty</label>
+        <div class="grid grid-cols-3 gap-2">
+          <Button
             v-for="diff in difficulties"
             :key="diff.name"
-            class="cursor-pointer transition-all duration-200 hover:shadow-lg hover:transform hover:scale-105"
-            :class="{
-              'ring-2 ring-blue-500': selectedDifficulty === diff.name,
-            }"
+            :label="diff.label"
+            :severity="
+              selectedDifficulty === diff.name ? 'success' : 'secondary'
+            "
+            :outlined="selectedDifficulty !== diff.name"
+            size="small"
+            class="flex flex-col items-center p-3"
             @click="selectedDifficulty = diff.name"
           >
-            <template #content>
-              <div class="text-center p-2">
-                <div class="text-lg font-semibold mb-1">{{ diff.label }}</div>
-                <div class="text-sm text-gray-600 dark:text-gray-400">
-                  {{ diff.cardCount }} cards
-                </div>
-                <div class="text-xs text-gray-500 mt-1">
-                  {{ diff.gridSize.rows }}×{{ diff.gridSize.cols }} grid
-                </div>
+            <template #default>
+              <div class="text-center">
+                <div class="font-semibold">{{ diff.label }}</div>
+                <div class="text-xs opacity-70">{{ diff.cardCount }} cards</div>
               </div>
             </template>
-          </Card>
+          </Button>
         </div>
       </div>
 
@@ -126,7 +121,6 @@
 import { ref, computed, watch } from "vue";
 import Dialog from "primevue/dialog";
 import Button from "primevue/button";
-import Card from "primevue/card";
 import InputText from "primevue/inputtext";
 import RadioButton from "primevue/radiobutton";
 import Dropdown from "primevue/dropdown";
@@ -153,9 +147,8 @@ interface StartGameOptions {
 
 // Emits
 interface Emits {
-  (e: "visible", value: boolean): void;
   (e: "start-game", options: StartGameOptions): void;
-  (e: "cancel"): void;
+  (e: "close"): void;
 }
 
 const props = defineProps<Props>();
@@ -190,10 +183,15 @@ const canStartGame = computed(() => {
 });
 
 // Methods
+const handleVisibilityChange = (newVisible: boolean) => {
+  if (!newVisible) {
+    emit("close");
+  }
+};
+
 const handleCancel = () => {
   resetForm();
-  emit("cancel");
-  emit("visible", false);
+  emit("close");
 };
 
 const handleStartGame = () => {
@@ -216,7 +214,7 @@ const handleStartGame = () => {
   };
 
   emit("start-game", options);
-  emit("visible", false);
+  emit("close");
   resetForm();
 };
 
@@ -234,6 +232,6 @@ watch(
     if (!newValue) {
       resetForm();
     }
-  },
+  }
 );
 </script>
