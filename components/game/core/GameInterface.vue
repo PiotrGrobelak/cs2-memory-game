@@ -9,55 +9,28 @@
 
     <!-- Game Status Bar -->
     <GameStatusBar
-      :time-elapsed="gameController.game.timeElapsed.value"
-      :stats="gameController.game.stats.value"
-      :current-score="gameController.game.currentScore.value"
+      :time-elapsed="coreStore.stats.timeElapsed"
+      :stats="coreStore.stats"
+      :current-score="coreStore.currentScore"
     />
 
     <!-- Progress Bar -->
-    <GameProgressBar :progress="gameController.gameProgress.value" />
+    <GameProgressBar :progress="gameProgress" />
 
     <!-- Game Controls -->
     <div class="game-controls mb-6 transition-all duration-200">
       <div class="flex flex-wrap gap-3 justify-center">
         <Button
-          v-if="
-            gameController.gameStatus.value === 'ready' &&
-            gameController.canContinueSavedGame.value
-          "
-          label="Continue Game"
-          icon="pi pi-play-circle"
-          severity="success"
-          size="large"
-          @click="continueSavedGame"
-        />
-
-        <Button
-          v-if="
-            gameController.gameStatus.value === 'ready' &&
-            !gameController.canContinueSavedGame.value
-          "
+          v-if="gameStatus === 'ready'"
           label="Start Game"
           icon="pi pi-play"
           severity="success"
           size="large"
-          @click="startNewGame"
+          @click="() => startNewGame()"
         />
 
         <Button
-          v-if="
-            gameController.gameStatus.value === 'ready' &&
-            gameController.canContinueSavedGame.value
-          "
-          label="Start New Game"
-          icon="pi pi-plus"
-          severity="info"
-          outlined
-          @click="confirmStartNewGame"
-        />
-
-        <Button
-          v-if="gameController.gameStatus.value === 'playing'"
+          v-if="gameStatus === 'playing'"
           label="Pause"
           icon="pi pi-pause"
           severity="warning"
@@ -65,16 +38,7 @@
         />
 
         <Button
-          v-if="gameController.gameStatus.value === 'playing'"
-          label="Restart"
-          icon="pi pi-refresh"
-          severity="danger"
-          outlined
-          @click="uiStore.openDialog('confirmRestart')"
-        />
-
-        <Button
-          v-if="gameController.gameStatus.value === 'completed'"
+          v-if="gameStatus === 'completed'"
           label="Play Again"
           icon="pi pi-replay"
           severity="success"
@@ -83,7 +47,6 @@
         />
 
         <Button
-          v-if="!gameController.canContinueSavedGame.value"
           label="New Game"
           icon="pi pi-plus"
           severity="info"
@@ -101,13 +64,13 @@
     >
       <ClientOnly>
         <GameCanvas
-          v-if="!showFallbackUI"
-          :cards="gameController.game.cards.value"
+          v-if="!showFallbackUI && cardsStore.cards.length > 0"
+          :cards="cardsStore.cards"
           :canvas-width="canvasDimensions.width"
           :canvas-height="canvasDimensions.height"
-          :game-status="gameController.gameStatus.value"
-          :is-interactive="gameController.gameStatus.value === 'playing'"
-          :selected-cards="gameController.game.selectedCardsData.value"
+          :game-status="gameStatus"
+          :is-interactive="gameStatus === 'playing'"
+          :selected-cards="cardsStore.selectedCardsData"
           @card-clicked="handleCardClick"
           @canvas-ready="handleCanvasReady"
           @canvas-error="handleCanvasError"
@@ -115,8 +78,7 @@
         />
 
         <!-- Enhanced Fallback UI when Canvas fails -->
-        <div v-else class="w-full max-w-4xl">
-          <!-- Enhanced Error Message -->
+        <div v-else-if="showFallbackUI" class="w-full max-w-4xl">
           <div class="text-center mb-6">
             <div
               class="bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900 dark:to-orange-900 border border-yellow-300 dark:border-yellow-700 rounded-lg p-6 mb-4"
@@ -130,65 +92,41 @@
                 Advanced Rendering Unavailable
               </h3>
               <p class="text-yellow-700 dark:text-yellow-300 mb-3">
-                Your browser doesn't support WebGL or Canvas rendering failed.
-                Using optimized grid interface with full game functionality.
+                Using simplified fallback interface.
               </p>
-              <div class="flex justify-center gap-2">
-                <Button
-                  label="Retry Advanced Mode"
-                  icon="pi pi-refresh"
-                  severity="warning"
-                  size="small"
-                  @click="retryCanvas"
-                />
-                <Button
-                  label="Continue with Grid"
-                  icon="pi pi-check"
-                  severity="success"
-                  size="small"
-                  outlined
-                  @click="acceptFallback"
-                />
-              </div>
             </div>
           </div>
 
-          <!-- Enhanced Fallback Card Grid -->
+          <!-- Fallback Card Grid -->
           <div
             class="grid gap-3 md:gap-4 mx-auto p-4 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 rounded-xl shadow-inner"
             :class="fallbackGridClasses"
             :style="{ maxWidth: canvasDimensions.width + 'px' }"
           >
             <div
-              v-for="card in gameController.game.cards.value"
+              v-for="card in cardsStore.cards"
               :key="card.id"
               class="fallback-card aspect-[3/4] rounded-xl border-2 transition-all duration-300 cursor-pointer select-none transform hover:scale-105 hover:shadow-lg"
               :class="getFallbackCardClasses(card)"
               @click="handleCardClick(card.id)"
             >
-              <!-- Enhanced Card Back -->
+              <!-- Card Back -->
               <div
                 v-if="card.state === 'hidden'"
-                class="w-full h-full bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 rounded-xl flex items-center justify-center relative overflow-hidden"
+                class="w-full h-full bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 rounded-xl flex items-center justify-center"
               >
-                <div
-                  class="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-20 transform -skew-x-12 translate-x-full animate-pulse"
-                ></div>
                 <i
                   class="pi pi-question text-white text-3xl md:text-4xl drop-shadow-lg"
-                ></i>
+                />
               </div>
 
-              <!-- Enhanced Card Front -->
+              <!-- Card Front -->
               <div
                 v-else
-                class="w-full h-full rounded-xl flex flex-col items-center justify-center p-3 relative overflow-hidden"
+                class="w-full h-full rounded-xl flex flex-col items-center justify-center p-3"
                 :class="getFallbackCardFrontClasses(card)"
               >
-                <div
-                  class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"
-                ></div>
-                <div class="relative z-10 text-center">
+                <div class="text-center">
                   <div
                     class="text-sm md:text-base font-bold text-white drop-shadow-md mb-1"
                   >
@@ -201,97 +139,87 @@
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Fallback Status -->
-          <div
-            class="text-center mt-6 text-sm text-gray-600 dark:text-gray-400"
-          >
-            <i class="pi pi-info-circle mr-1"></i>
-            Grid mode active - All game features available
-          </div>
+        <!-- Loading State -->
+        <div v-else-if="isLoading" class="w-full text-center py-12">
+          <i class="pi pi-spin pi-spinner text-4xl text-gray-400 mb-4" />
+          <p class="text-gray-600 dark:text-gray-400">Loading game...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div v-else class="w-full text-center py-12">
+          <i class="pi pi-play text-4xl text-gray-400 mb-4" />
+          <p class="text-gray-600 dark:text-gray-400">
+            Start a new game to begin playing
+          </p>
         </div>
       </ClientOnly>
     </div>
 
-    <!-- Settings Dialog -->
-    <SettingsDialog
-      :visible="uiStore.dialogsState.settings"
-      :difficulties="difficulties"
-      :seed-validator="gameController.seedSystem.validateSeed"
-      @visible="
-        (value) =>
-          value
-            ? uiStore.openDialog('settings')
-            : uiStore.closeDialog('settings')
-      "
-      @apply="handleSettingsApply"
-      @cancel="uiStore.closeDialog('settings')"
-    />
-
-    <!-- New Game Dialog -->
+    <!-- Game Dialogs -->
     <NewGameDialog
       :visible="uiStore.dialogsState.newGame"
       :difficulties="difficulties"
       :seed-history="seedHistory"
-      :seed-validator="gameController.seedSystem.validateSeed"
-      @visible="
-        (value) =>
-          value ? uiStore.openDialog('newGame') : uiStore.closeDialog('newGame')
-      "
+      :seed-validator="seedValidator"
+      @close="uiStore.closeDialog('newGame')"
       @start-game="handleNewGameStart"
-      @cancel="uiStore.closeDialog('newGame')"
     />
 
-    <!-- Confirmation Dialogs -->
-    <ConfirmDialog />
-
-    <!-- Game Completion Toast -->
-    <Toast />
-
-    <!-- Debug Panel (Development Only) -->
-    <GameDebugPanel :debug-info="debugInfo" />
+    <SettingsDialog
+      :visible="uiStore.dialogsState.settings"
+      :difficulties="difficulties"
+      :seed-validator="seedValidator"
+      @close="uiStore.closeDialog('settings')"
+      @apply="handleSettingsApply"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onMounted, useTemplateRef, ref, nextTick } from "vue";
-import { useConfirm } from "primevue/useconfirm";
-import { useToast } from "primevue/usetoast";
-import type { GameOptions, GameCard } from "~/types/game";
-import { useGameController } from "~/composables/core/useGameController";
-import { useGameUIStore } from "~/stores/game/ui";
-import { useDeviceDetection } from "~/composables/device/useDeviceDetection";
+import { ref, computed, watch, onMounted, nextTick } from "vue";
 
-// PrimeVue components
-import Button from "primevue/button";
-import ConfirmDialog from "primevue/confirmdialog";
-import Toast from "primevue/toast";
-
-// Game components
 import GameHeader from "../ui/header/GameHeader.vue";
 import GameStatusBar from "../ui/status/GameStatusBar.vue";
 import GameProgressBar from "../ui/status/GameProgressBar.vue";
 import SettingsDialog from "../dialogs/SettingsDialog.vue";
 import NewGameDialog from "../dialogs/NewGameDialog.vue";
 import GameCanvas from "./GameCanvas.vue";
-import GameDebugPanel from "../../debug/GameDebugPanel.vue";
 
-// Composables and stores
-const gameController = useGameController();
-const uiStore = useGameUIStore();
-const confirm = useConfirm();
+import { useToast } from "primevue/usetoast";
+import type { GameOptions, GameCard, GameResult } from "~/types/game";
+import { useDeviceDetection } from "~/composables/device/useDeviceDetection";
+import { useGameUIStore } from "~/stores/game/ui";
+import { useGameCoreStore } from "~/stores/game/core";
+import { useGameCardsStore } from "~/stores/game/cards";
+import { useGameTimerStore } from "~/stores/game/timer";
+import { useCS2Data } from "~/composables/data/useCS2Data";
+import { useGamePersistence } from "~/composables/data/useGamePersistence";
+
+// Composables
 const toast = useToast();
-
-// Device detection and layout
 const deviceDetection = useDeviceDetection();
 
-// Template refs
-const canvasWrapperRef = useTemplateRef<HTMLDivElement>("canvasWrapperRef");
+// Stores - Direct Pinia usage like the plan suggests
+const uiStore = useGameUIStore();
+const coreStore = useGameCoreStore();
+const cardsStore = useGameCardsStore();
+const timerStore = useGameTimerStore();
 
-// Debug configuration (set to true for development/testing)
+// Data loading - Simple like weapon.vue
+const { initializeData } = useCS2Data();
+
+// Game persistence for seed history
+const { loadGameHistory } = useGamePersistence();
+
+// Refs
+const canvasWrapperRef = ref<HTMLDivElement>();
+const showFallbackUI = ref(false);
+const isLoading = ref(false);
 
 // Difficulty configurations
-const difficulties = [
+const difficulties = computed(() => [
   {
     name: "easy" as const,
     label: "Easy",
@@ -310,79 +238,155 @@ const difficulties = [
     cardCount: 48,
     gridSize: { rows: 6, cols: 8 },
   },
-];
+]);
 
-// Computed properties
-const canShare = computed(() => {
-  return gameController.seedSystem.canShareSeed.value;
-});
+// Seed history
+const seedHistory = ref<string[]>([]);
 
-const seedHistory = computed(() => {
-  return [...gameController.seedSystem.state.value.seedHistory];
-});
-
-// Debug info for development
-const debugInfo = computed(() => ({
-  gameStatus: gameController.gameStatus.value,
-  seedHistoryCount: gameController.seedSystem.state.value.seedHistory.length,
-  cs2ItemsCount: gameController.cs2Data.state.value.items.length,
-  cacheValid: gameController.cs2Data.hasItems.value,
-  autoSaveStatus: gameController.state.value.hasUnsavedChanges
-    ? "Pending"
-    : "Saved",
-  currentSeed: gameController.seedSystem.state.value.currentSeed,
-}));
-
-// Methods
-const startNewGame = async () => {
+// Load seed history on component mount
+const loadSeedHistory = async () => {
   try {
-    await gameController.game.startGame();
+    const history = await loadGameHistory();
+    seedHistory.value = [
+      ...new Set(history.map((h: GameResult) => h.seed).filter(Boolean)),
+    ].slice(0, 10); // Last 10 unique seeds
   } catch (error) {
-    console.error("Failed to start game:", error);
+    console.error("Failed to load seed history:", error);
+    seedHistory.value = [];
   }
 };
 
-const continueSavedGame = async () => {
+// Seed validator
+const seedValidator = (seed: string) => {
+  if (!seed.trim()) {
+    return { isValid: false, error: "Seed cannot be empty" };
+  }
+  if (seed.length < 3) {
+    return { isValid: false, error: "Seed must be at least 3 characters" };
+  }
+  if (seed.length > 50) {
+    return { isValid: false, error: "Seed must be less than 50 characters" };
+  }
+  return { isValid: true, error: null };
+};
+
+// Computed properties - Direct from stores
+const gameStatus = computed(() => {
+  if (isLoading.value) return "initializing";
+  if (!coreStore.isPlaying && cardsStore.cards.length === 0) return "ready";
+  if (coreStore.isPlaying) return "playing";
+  if (coreStore.isGameComplete) return "completed";
+  return "ready";
+});
+
+const gameProgress = computed(() => {
+  if (cardsStore.cards.length === 0) return 0;
+  const totalPairs = coreStore.stats.totalPairs;
+  const matchedPairs = coreStore.stats.matchesFound;
+  return totalPairs > 0 ? (matchedPairs / totalPairs) * 100 : 0;
+});
+
+const canShare = computed(() => cardsStore.cards.length > 0);
+
+// Game initialization - Simplified like weapon.vue
+const initializeGame = async (options: Partial<GameOptions> = {}) => {
   try {
-    const success = await gameController.continueSavedGame();
-    if (success) {
-      toast.add({
-        severity: "success",
-        summary: "Game Resumed",
-        detail: "Your saved game has been resumed",
-        life: 3000,
-      });
-    }
+    isLoading.value = true;
+
+    // Reset timer first
+    timerStore.resetTimer();
+
+    // Initialize core game settings
+    await coreStore.initializeGame(options);
+
+    // Load CS2 data - simple like weapon.vue
+    const difficulty = coreStore.difficulty;
+    await initializeData(100); // Load 100 items like analysis suggests
+
+    // Generate cards with Pinia store
+    await cardsStore.generateCards(difficulty, coreStore.seed);
+
+    console.log(
+      `🎮 Game initialized: ${difficulty.name} mode with ${cardsStore.cards.length} cards`
+    );
   } catch (error) {
-    console.error("Failed to continue saved game:", error);
+    console.error("Failed to initialize game:", error);
     toast.add({
       severity: "error",
-      summary: "Error",
-      detail: "Failed to continue saved game",
-      life: 3000,
+      summary: "Initialization Failed",
+      detail: "Could not load game data",
+      life: 5000,
     });
+  } finally {
+    isLoading.value = false;
   }
+};
+
+// Game actions - Simplified
+const startNewGame = async (options: Partial<GameOptions> = {}) => {
+  await initializeGame(options);
+  coreStore.startGame();
+  timerStore.startTimer();
+  console.log("🕐 Timer started, isRunning:", timerStore.isRunning);
 };
 
 const pauseGame = () => {
-  try {
-    gameController.game.pauseGame();
-  } catch (error) {
-    console.error("Failed to pause game:", error);
-  }
+  coreStore.pauseGame();
+  timerStore.pauseTimer();
 };
 
 const playAgain = async () => {
-  try {
-    await gameController.restartGame();
-  } catch (error) {
-    console.error("Failed to restart game:", error);
-  }
+  const currentDifficulty = coreStore.difficulty.name;
+  await startNewGame({ difficulty: currentDifficulty });
 };
 
+// Canvas dimensions
+const canvasDimensions = computed(() => {
+  const container = canvasWrapperRef.value;
+  if (!container) {
+    return { width: 800, height: 600 };
+  }
+
+  const containerRect = container.getBoundingClientRect();
+  const padding = 32;
+
+  return {
+    width: Math.max(400, containerRect.width - padding),
+    height: Math.max(300, containerRect.height - padding),
+  };
+});
+
+// Canvas event handlers
+const handleCardClick = (cardId: string) => {
+  if (gameStatus.value !== "playing") return;
+
+  console.log(`🎯 Card clicked in GameInterface: ${cardId}`);
+  // Card selection is now handled directly in GameCanvas via store
+};
+
+const handleCanvasReady = () => {
+  console.log("✅ Game canvas ready");
+};
+
+const handleCanvasError = (error?: string) => {
+  console.error("❌ Canvas error:", error);
+  showFallbackUI.value = true;
+  toast.add({
+    severity: "warn",
+    summary: "Rendering Issue",
+    detail: "Switched to fallback interface",
+    life: 3000,
+  });
+};
+
+const handleLoadingStateChanged = (loading: boolean) => {
+  console.log("Canvas loading state:", loading);
+};
+
+// Game sharing
 const shareGame = async () => {
   try {
-    const shareUrl = gameController.shareCurrentGame();
+    const shareUrl = `${window.location.origin}${window.location.pathname}?seed=${coreStore.seed}&difficulty=${coreStore.difficulty.name}`;
     await navigator.clipboard.writeText(shareUrl);
     toast.add({
       severity: "success",
@@ -401,27 +405,25 @@ const shareGame = async () => {
   }
 };
 
+// Dialog handlers
 const handleSettingsApply = async (settings: {
   difficulty: "easy" | "medium" | "hard";
   seed?: string;
   enableSound: boolean;
   enableParallax: boolean;
 }) => {
-  const newOptions: GameOptions = {
-    difficulty: settings.difficulty,
-    seed: settings.seed,
-    enableSound: settings.enableSound,
-    enableParallax: settings.enableParallax,
-  };
-
   try {
-    // Update UI options
     uiStore.updateUIOption("enableSound", settings.enableSound);
     uiStore.updateUIOption("enableParallax", settings.enableParallax);
 
-    await gameController.startNewGame(newOptions);
-    uiStore.closeDialog("settings");
+    await startNewGame({
+      difficulty: settings.difficulty,
+      seed: settings.seed,
+      enableSound: settings.enableSound,
+      enableParallax: settings.enableParallax,
+    });
 
+    uiStore.closeDialog("settings");
     toast.add({
       severity: "success",
       summary: "Settings Applied",
@@ -443,17 +445,9 @@ const handleNewGameStart = async (options: {
   difficulty: "easy" | "medium" | "hard";
   seed?: string;
 }) => {
-  const newOptions: GameOptions = {
-    difficulty: options.difficulty,
-    seed: options.seed,
-    enableSound: uiStore.uiOptions.enableSound,
-    enableParallax: uiStore.uiOptions.enableParallax,
-  };
-
   try {
-    await gameController.startNewGame(newOptions);
+    await startNewGame(options);
     uiStore.closeDialog("newGame");
-
     toast.add({
       severity: "success",
       summary: "New Game Started",
@@ -471,29 +465,55 @@ const handleNewGameStart = async (options: {
   }
 };
 
-const confirmStartNewGame = () => {
-  confirm.require({
-    message:
-      "Are you sure you want to start a new game? Your current saved game will be lost.",
-    header: "Confirm New Game",
-    icon: "pi pi-exclamation-triangle",
-    accept: async () => {
-      uiStore.openDialog("newGame");
-    },
-    reject: () => {
-      // User rejected the confirmation
-    },
-  });
+// Fallback UI helpers
+const fallbackGridClasses = computed(() => {
+  const difficulty = coreStore.difficulty?.name || "easy";
+  const gridConfigs: Record<string, string> = {
+    easy: "grid-cols-4 md:grid-cols-4",
+    medium: "grid-cols-4 md:grid-cols-6",
+    hard: "grid-cols-4 md:grid-cols-8",
+  };
+  return gridConfigs[difficulty] || gridConfigs.easy;
+});
+
+const getFallbackCardClasses = (card: GameCard) => {
+  const isSelected = cardsStore.selectedCards.includes(card.id);
+  const isMatched = card.state === "matched";
+  const isRevealed = card.state === "revealed";
+
+  return {
+    "border-blue-500 bg-blue-50 dark:bg-blue-900": card.state === "hidden",
+    "border-green-500 bg-green-50 dark:bg-green-900": isMatched,
+    "border-yellow-500 bg-yellow-50 dark:bg-yellow-900":
+      isRevealed && !isMatched,
+    "ring-2 ring-blue-400": isSelected,
+    "opacity-50": isMatched,
+  };
+};
+
+const getFallbackCardFrontClasses = (card: GameCard) => {
+  const rarityColors: Record<string, string> = {
+    consumer: "bg-gradient-to-br from-gray-400 to-gray-600",
+    industrial: "bg-gradient-to-br from-blue-400 to-blue-600",
+    milSpec: "bg-gradient-to-br from-purple-400 to-purple-600",
+    restricted: "bg-gradient-to-br from-pink-400 to-pink-600",
+    classified: "bg-gradient-to-br from-red-400 to-red-600",
+    covert: "bg-gradient-to-br from-orange-400 to-orange-600",
+    contraband: "bg-gradient-to-br from-yellow-400 to-yellow-600",
+  };
+
+  const rarity = card.cs2Item?.rarity || "consumer";
+  return rarityColors[rarity] || rarityColors.consumer;
 };
 
 // Watchers
 watch(
-  () => gameController.game.isGameComplete.value,
+  () => coreStore.isGameComplete,
   (isComplete) => {
     if (isComplete) {
-      const score = gameController.game.currentScore.value;
-      const timeElapsed = gameController.game.timeElapsed.value;
-      const moves = gameController.game.stats.value.moves;
+      const score = coreStore.currentScore;
+      const timeElapsed = coreStore.stats.timeElapsed;
+      const moves = coreStore.stats.moves;
 
       const minutes = Math.floor(timeElapsed / 60);
       const seconds = Math.floor(timeElapsed % 60);
@@ -505,149 +525,27 @@ watch(
         detail: `Game completed in ${formattedTime} with ${moves} moves. Score: ${score.toLocaleString()}`,
         life: 5000,
       });
+
+      timerStore.stopTimer();
     }
   }
 );
 
-// Canvas dimensions calculation
-const canvasDimensions = computed(() => {
-  const container = canvasWrapperRef.value;
-  if (!container) {
-    return { width: 800, height: 600 }; // Default dimensions
-  }
-
-  const containerRect = container.getBoundingClientRect();
-  const padding = 32; // Account for container padding
-
-  return {
-    width: Math.max(400, containerRect.width - padding),
-    height: Math.max(300, containerRect.height - padding),
-  };
-});
-
-// Canvas event handlers
-const handleCardClick = (cardOrId: GameCard | string) => {
-  try {
-    const cardId = typeof cardOrId === "string" ? cardOrId : cardOrId.id;
-    gameController.game.selectCard(cardId);
-  } catch (error) {
-    console.error("Failed to select card:", error);
-  }
-};
-
-const handleCanvasReady = () => {
-  console.log("Game canvas initialized successfully");
-};
-
-// Removed duplicate - see updated version below
-
-const handleLoadingStateChanged = (isLoading: boolean) => {
-  // Could be used to show/hide loading indicators
-  console.log("Canvas loading state changed:", isLoading);
-};
-
-// Watch for window size changes to update canvas dimensions
+// Sync timer store with core store stats
 watch(
-  () => deviceDetection.windowSize.value,
-  (newSize) => {
-    console.log(
-      `📏 Window size changed: ${newSize.width}×${newSize.height}, device: ${deviceDetection.deviceType.value}`
-    );
-    // The canvasDimensions computed will automatically recalculate due to reactive dependencies
-  },
-  { deep: true }
+  () => timerStore.timeElapsed,
+  (newTimeElapsed) => {
+    coreStore.updateTimeElapsed(newTimeElapsed);
+    // Uncomment for debugging: console.log("⏰ Timer sync:", newTimeElapsed, "ms");
+  }
 );
 
-// Fallback UI state
-const showFallbackUI = ref(false);
-
-// Fallback UI computed properties
-const fallbackGridClasses = computed(() => {
-  // Get difficulty from current game state or default to easy
-  const difficulty = gameController.game.difficulty.value?.name || "easy";
-  const gridConfigs: Record<string, string> = {
-    easy: "grid-cols-4 md:grid-cols-4",
-    medium: "grid-cols-4 md:grid-cols-6",
-    hard: "grid-cols-4 md:grid-cols-8",
-  };
-  return gridConfigs[difficulty] || gridConfigs.easy;
-});
-
-// Fallback UI methods
-const getFallbackCardClasses = (card: GameCard) => {
-  const isSelected = gameController.game.selectedCards.value.includes(card.id);
-  const isMatched = card.state === "matched";
-
-  return [
-    "border-slate-300 dark:border-slate-600",
-    {
-      "border-blue-500 dark:border-blue-400 shadow-lg": isSelected,
-      "border-green-500 dark:border-green-400 opacity-75": isMatched,
-      "hover:border-slate-400 dark:hover:border-slate-500":
-        !isSelected && !isMatched,
-    },
-  ];
-};
-
-const getFallbackCardFrontClasses = (card: GameCard) => {
-  const rarity = card.cs2Item?.rarity || "consumer";
-  const rarityColors = {
-    consumer: "bg-gradient-to-br from-gray-500 to-gray-700",
-    industrial: "bg-gradient-to-br from-blue-500 to-blue-700",
-    milSpec: "bg-gradient-to-br from-blue-600 to-blue-800",
-    restricted: "bg-gradient-to-br from-purple-500 to-purple-700",
-    classified: "bg-gradient-to-br from-pink-500 to-pink-700",
-    covert: "bg-gradient-to-br from-red-500 to-red-700",
-    contraband: "bg-gradient-to-br from-yellow-500 to-yellow-700",
-  };
-
-  return (
-    rarityColors[rarity as keyof typeof rarityColors] ||
-    rarityColors["consumer"]
-  );
-};
-
-// Enhanced error handler for better error handling
-const handleCanvasError = (error: string) => {
-  console.error("Canvas error:", error);
-  showFallbackUI.value = true;
-
-  // Show toast with information about switching to fallback
-  toast.add({
-    severity: "warn",
-    summary: "Canvas Unavailable",
-    detail:
-      "Switched to fallback grid interface. Game functionality is preserved.",
-    life: 5000,
-  });
-};
-
-// Improved retry mechanism
-const retryCanvas = async () => {
-  showFallbackUI.value = false;
-
-  await nextTick();
-
-  toast.add({
-    severity: "info",
-    summary: "Retrying Canvas",
-    detail: "Attempting to initialize advanced rendering...",
-    life: 3000,
-  });
-};
-
-// Accept fallback method
-const acceptFallback = () => {
-  toast.add({
-    severity: "success",
-    summary: "Grid Mode Active",
-    detail: "Continuing with optimized grid interface",
-    life: 3000,
-  });
-};
-
-// Initialize on mount
+// Initialize default game on mount
 onMounted(async () => {
-  await gameController.initializeGame();
+  await nextTick();
+  // Load seed history
+  await loadSeedHistory();
+  // Auto-start easy game for testing
+  // await startNewGame({ difficulty: "easy" });
 });
 </script>

@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, computed, readonly } from "vue";
+import { ref, computed } from "vue";
 import type { GameOptions, DifficultyLevel, GameStats } from "~/types/game";
 
 export const useGameCoreStore = defineStore("game-core", () => {
@@ -130,7 +130,7 @@ export const useGameCoreStore = defineStore("game-core", () => {
   };
 
   const getDifficultyConfig = (
-    name: "easy" | "medium" | "hard",
+    name: "easy" | "medium" | "hard"
   ): DifficultyLevel => {
     const configs = {
       easy: {
@@ -153,12 +153,12 @@ export const useGameCoreStore = defineStore("game-core", () => {
   };
 
   return {
-    // State (readonly for external access)
-    gameId: readonly(gameId),
-    seed: readonly(seed),
-    difficulty: readonly(difficulty),
-    isPlaying: readonly(isPlaying),
-    stats: readonly(stats),
+    // State
+    gameId,
+    seed,
+    difficulty,
+    isPlaying,
+    stats,
 
     // Getters
     isGameComplete,

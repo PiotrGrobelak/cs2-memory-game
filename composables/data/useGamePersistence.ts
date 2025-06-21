@@ -414,6 +414,26 @@ export const useGamePersistence = () => {
     state.value.error = null;
   };
 
+  // Simplified wrapper methods for GameInterface compatibility
+  const saveGame = (data: GameState): Promise<boolean> => {
+    return saveGameState(data);
+  };
+
+  const loadGame = (): Promise<GameState | null> => {
+    return loadGameState();
+  };
+
+  const canContinueGame = (): boolean => {
+    // Simple check - we can continue if there's saved data
+    try {
+      if (!isStorageAvailable()) return false;
+      const stored = localStorage.getItem(getStorageKey("GAME_STATE"));
+      return !!stored;
+    } catch {
+      return false;
+    }
+  };
+
   return {
     // State
     state: readonly(state),
@@ -426,6 +446,11 @@ export const useGamePersistence = () => {
     saveGameState,
     loadGameState,
     deleteGameState,
+
+    // Simplified wrappers
+    saveGame,
+    loadGame,
+    canContinueGame,
 
     // Game History
     saveGameResult,

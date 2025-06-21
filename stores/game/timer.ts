@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, computed, readonly } from "vue";
+import { ref, computed } from "vue";
 
 export const useGameTimerStore = defineStore("game-timer", () => {
   // State
@@ -80,11 +80,16 @@ export const useGameTimerStore = defineStore("game-timer", () => {
     return Date.now() - startTime.value;
   };
 
+  const restoreTimer = (savedTime: number): void => {
+    resetTimer();
+    timeElapsed.value = savedTime;
+  };
+
   return {
-    // State (readonly for external access)
-    startTime: readonly(startTime),
-    timeElapsed: readonly(timeElapsed),
-    isRunning: readonly(isRunning),
+    // State
+    startTime,
+    timeElapsed,
+    isRunning,
 
     // Getters
     formattedTime,
@@ -97,5 +102,6 @@ export const useGameTimerStore = defineStore("game-timer", () => {
     resumeTimer,
     stopTimer,
     getCurrentElapsedTime,
+    restoreTimer,
   };
 });

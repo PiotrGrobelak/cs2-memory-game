@@ -37,19 +37,12 @@
 </template>
 
 <script setup lang="ts">
-import {
-  ref,
-  onMounted,
-  onUnmounted,
-  watch,
-  nextTick,
-  onBeforeUnmount,
-} from "vue";
+import { ref, onMounted, onUnmounted, watch, nextTick } from "vue";
+import { Application, Graphics, Sprite, type Texture } from "pixi.js";
 import type { GameCard } from "~/types/game";
-import { useGameEngine } from "~/composables/engine/useGameEngine";
-import { useCardRenderer } from "~/composables/engine/useCardRenderer";
-import { useLayoutEngine } from "~/composables/engine/useLayoutEngine";
-import { useGameInteractions } from "~/composables/engine/useGameInteractions";
+import { useTextureLoader } from "~/composables/engine/useTextureLoader";
+import { useGameCardsStore } from "~/stores/game/cards";
+import { useGameCoreStore } from "~/stores/game/core";
 
 // Props
 interface Props {
@@ -69,30 +62,40 @@ interface Props {
 
 interface Emits {
   (e: "card-clicked", cardId: string): void;
-  // eslint-disable-next-line @typescript-eslint/unified-signatures
-  (e: "canvas-error", error: string): void;
+  (e: "canvas-error", error?: string): void;
   (e: "canvas-ready"): void;
   (e: "loading-state-changed", isLoading: boolean): void;
 }
 
 const props = defineProps<Props>();
-
-// Emits
 const emit = defineEmits<Emits>();
 
 // Refs
 const canvasContainer = ref<HTMLDivElement>();
 const isLoading = ref(false);
 const error = ref<string | null>(null);
+const pixiApp = ref<Application | null>(null);
 
-// Composables
-const gameEngine = useGameEngine();
-const cardRenderer = useCardRenderer();
-const layoutEngine = useLayoutEngine();
-const gameInteractions = useGameInteractions();
+// Composables & Stores
+const { getTexture, preloadCardTextures } = useTextureLoader();
+const cardsStore = useGameCardsStore();
+const coreStore = useGameCoreStore();
 
-// Initialization
-const initializeCanvas = async () => {
+// Methods
+const getRarityColorHex = (rarity: string): number => {
+  const colors: Record<string, number> = {
+    consumer: 0xb0c3d9,
+    industrial: 0x5e98d9,
+    milSpec: 0x4b69ff,
+    restricted: 0x8847ff,
+    classified: 0xd32ce6,
+    covert: 0xeb4b4b,
+    contraband: 0xe4ae39,
+  };
+  return colors[rarity] || colors.consumer;
+};
+
+const initializePixi = async () => {
   if (!canvasContainer.value) return;
 
   try {
@@ -100,208 +103,283 @@ const initializeCanvas = async () => {
     emit("loading-state-changed", true);
     error.value = null;
 
-    // Initialize PixiJS engine
-    const game = await gameEngine.initializeEngine({
+    // Create PixiJS application - direct implementation like WeaponGrid
+    pixiApp.value = new Application();
+    await pixiApp.value.init({
       width: props.canvasWidth,
       height: props.canvasHeight,
-      backgroundColor: 0x1a1a1a,
+      backgroundColor: 0x1a1a2e,
       antialias: true,
       resolution: window.devicePixelRatio || 1,
-      powerPreference: "high-performance",
     });
 
     // Append canvas to container
-    canvasContainer.value.appendChild(game.app.canvas);
+    canvasContainer.value.appendChild(pixiApp.value.canvas);
 
-    // Setup cards
-    await setupCards();
-
-    // Setup interactions
-    setupInteractions();
+    // Render cards directly
+    await renderCards();
 
     emit("canvas-ready");
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : "Unknown error";
+    const errorMessage =
+      err instanceof Error ? err.message : "Failed to initialize canvas";
     error.value = errorMessage;
     emit("canvas-error", errorMessage);
+    console.error("Pixi initialization error:", err);
   } finally {
     isLoading.value = false;
     emit("loading-state-changed", false);
   }
 };
 
-const setupCards = async () => {
-  if (!gameEngine.pixiApp.value) return;
+const renderCards = async () => {
+  if (!pixiApp.value || props.cards.length === 0) return;
 
-  // Clear any existing sprites and stop animations first
-  cardRenderer.stopAllAnimations();
+  try {
+    // Clear existing content
+    pixiApp.value.stage.removeChildren();
 
-  // Clear the card container to remove old sprites
-  if (gameEngine.pixiApp.value.cardContainer.children.length > 0) {
-    gameEngine.pixiApp.value.cardContainer.removeChildren();
-  }
+    // Preload all card textures
+    await preloadCardTextures(props.cards);
 
-  // Clear sprites from renderer cache
-  cardRenderer.clearAllSprites();
+    // Calculate grid layout based on difficulty
+    const gridSize = coreStore.difficultySettings.gridSize;
+    const cellWidth = props.canvasWidth / gridSize.cols;
+    const cellHeight = props.canvasHeight / gridSize.rows;
 
-  previousCardsStates.value.clear();
+    const cardWidth = cellWidth * 0.85; // 85% of cell width for padding
+    const cardHeight = cellHeight * 0.85; // 85% of cell height for padding
 
-  // Calculate card positions
-  const difficulty =
-    props.cards.length <= 12
-      ? "easy"
-      : props.cards.length <= 24
-        ? "medium"
-        : "hard";
+    // Render each card
+    props.cards.forEach((card, index) => {
+      const row = Math.floor(index / gridSize.cols);
+      const col = index % gridSize.cols;
 
-  const positions = layoutEngine.calculateCardPositions(
-    props.cards,
-    props.canvasWidth,
-    props.canvasHeight,
-    difficulty
-  );
+      const position = {
+        x: col * cellWidth + cellWidth * 0.5,
+        y: row * cellHeight + cellHeight * 0.5,
+      };
 
-  // Create card sprites concurrently using Promise.all
-  const spritePromises = props.cards.map(async (card, i) => {
-    const position = positions[i];
-    const sprite = await cardRenderer.createCard(card, position);
-    return { sprite, card };
-  });
+      // Create card sprite based on state
+      if (card.state === "hidden") {
+        // Create card back (hidden state)
+        const cardBack = new Graphics()
+          .roundRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 12)
+          .fill({
+            color: 0x4f46e5, // Blue color for card back
+            alpha: 0.9,
+          })
+          .stroke({
+            color: 0x3730a3, // Darker blue border
+            width: 3,
+          });
 
-  const spriteResults = await Promise.all(spritePromises);
+        cardBack.position.set(position.x, position.y);
+        cardBack.interactive = props.isInteractive;
+        cardBack.cursor = "pointer";
 
-  // Add sprites to container and setup interactions
-  if (gameEngine.pixiApp.value) {
-    spriteResults.forEach(({ sprite }) => {
-      gameEngine.pixiApp.value!.cardContainer.addChild(sprite);
-      gameInteractions.setupCardInteraction(sprite, handleCardClick);
+        // Add click handler - call store action
+        cardBack.on("click", () => handleCardClick(card.id));
+        cardBack.on("tap", () => handleCardClick(card.id));
+
+        // Add hover effects
+        if (props.isInteractive) {
+          cardBack.on("mouseover", () => {
+            cardBack.alpha = 0.7;
+          });
+          cardBack.on("mouseout", () => {
+            cardBack.alpha = 0.9;
+          });
+        }
+
+        pixiApp.value!.stage.addChild(cardBack);
+
+        // Add question mark indicator
+        const questionMark = new Graphics()
+          .roundRect(-3, -15, 6, 20, 3)
+          .fill(0xffffff)
+          .roundRect(-3, 8, 6, 6, 3)
+          .fill(0xffffff);
+
+        questionMark.position.set(position.x, position.y);
+        pixiApp.value!.stage.addChild(questionMark);
+      } else if (card.state === "revealed" || card.state === "matched") {
+        // Create card front (revealed/matched state)
+        const rarityColor = getRarityColorHex(
+          card.cs2Item?.rarity || "consumer"
+        );
+        const isMatched = card.state === "matched";
+
+        // Create card background
+        const cardFront = new Graphics()
+          .roundRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 12)
+          .fill({
+            color: rarityColor,
+            alpha: isMatched ? 0.25 : 0.15,
+          })
+          .stroke({
+            color: rarityColor,
+            width: isMatched ? 4 : 2,
+          });
+
+        cardFront.position.set(position.x, position.y);
+        pixiApp.value!.stage.addChild(cardFront);
+
+        // Create weapon image if available
+        if (card.cs2Item?.imageUrl) {
+          const texture = getTexture(card.cs2Item.imageUrl) as Texture;
+          if (texture) {
+            const weaponSprite = new Sprite(texture);
+
+            // Calculate scale to fit within card
+            const maxWidth = cardWidth * 0.7;
+            const maxHeight = cardHeight * 0.6;
+            const scaleX = maxWidth / texture.width;
+            const scaleY = maxHeight / texture.height;
+            const scale = Math.min(scaleX, scaleY, 1);
+
+            weaponSprite.scale.set(scale);
+            weaponSprite.anchor.set(0.5);
+            weaponSprite.position.set(position.x, position.y - 5);
+
+            // Add matched effect
+            if (isMatched) {
+              weaponSprite.alpha = 0.8;
+            }
+
+            pixiApp.value!.stage.addChild(weaponSprite);
+
+            // Add glow effect for matched cards
+            if (isMatched) {
+              const glowRadius =
+                Math.max(weaponSprite.width, weaponSprite.height) * 0.4;
+              const glowFilter = new Graphics().circle(0, 0, glowRadius).fill({
+                color: 0x22c55e, // Green glow for matched
+                alpha: 0.15,
+              });
+
+              glowFilter.position.set(position.x, position.y - 5);
+              pixiApp.value!.stage.addChildAt(
+                glowFilter,
+                pixiApp.value!.stage.children.length - 1
+              );
+            }
+          }
+        }
+      }
     });
 
-    // Initialize card interactions with current card states
-    // gameInteractions.updateCards(props.cards);
+    console.log(
+      `Rendered ${props.cards.length} cards in ${gridSize.rows}x${gridSize.cols} grid`
+    );
+  } catch (err) {
+    console.error("Error rendering cards:", err);
+    const errorMessage =
+      err instanceof Error ? err.message : "Failed to render cards";
+    error.value = errorMessage;
+    emit("canvas-error", errorMessage);
   }
-};
-
-const setupInteractions = () => {
-  if (!gameEngine.pixiApp.value) return;
-
-  const canvas = gameEngine.pixiApp.value.app.canvas;
-
-  // Mouse interactions
-  canvas.addEventListener("mousemove", (event) => {
-    gameInteractions.handleMouseMove(event, canvas, handleParallaxUpdate);
-  });
-
-  // Touch interactions
-  canvas.addEventListener("touchmove", (event) => {
-    gameInteractions.handleTouchMove(event, canvas, handleParallaxUpdate);
-  });
 };
 
 const handleCardClick = (cardId: string) => {
-  emit("card-clicked", cardId);
+  if (!props.isInteractive) return;
+
+  console.log(`🎯 Card clicked: ${cardId}`);
+
+  // Call store action for game logic
+  const success = cardsStore.selectCard(cardId);
+
+  if (success) {
+    // Emit for parent component coordination
+    emit("card-clicked", cardId);
+
+    // Check for match after selection
+    if (cardsStore.selectedCards.length === 2) {
+      const isMatch = cardsStore.checkForMatch();
+
+      // Always increment moves count
+      coreStore.incrementMoves();
+
+      if (isMatch) {
+        // Increment matches in core store
+        coreStore.incrementMatches();
+
+        // Check if game is complete (all pairs matched)
+        const totalMatched = cardsStore.matchedCards.length / 2; // Each pair = 2 cards
+        const totalPairs = coreStore.stats.totalPairs;
+
+        console.log(
+          `🎯 Game progress: ${totalMatched}/${totalPairs} pairs matched`
+        );
+
+        if (totalMatched >= totalPairs) {
+          console.log(`🎉 All pairs matched! Completing game.`);
+          coreStore.completeGame();
+        }
+      }
+    }
+  }
 };
 
-const handleParallaxUpdate = (x: number, y: number) => {
-  // Apply parallax effect to all cards
-  props.cards.forEach((card) => {
-    cardRenderer.applyParallaxEffect(
-      card.id,
-      x,
-      y,
-      props.canvasWidth,
-      props.canvasHeight
-    );
-  });
+const retryInitialization = async () => {
+  await initializePixi();
 };
 
-const retryInitialization = () => {
-  error.value = null;
-  nextTick(() => {
-    initializeCanvas();
-  });
+const cleanup = () => {
+  if (pixiApp.value) {
+    pixiApp.value.destroy(true);
+    pixiApp.value = null;
+  }
 };
 
-const previousCardsStates = ref<Map<string, GameCard["state"]>>(new Map());
-
-// Watchers
+// Watch for card changes and re-render
 watch(
   () => props.cards,
-  (newCards) => {
-    // Update card states when cards change
-    newCards.forEach((card) => {
-      const previousState = previousCardsStates.value.get(card.id);
-      if (previousState !== card.state) {
-        cardRenderer.updateCardState(card.id, card.state);
-      }
-    });
-    previousCardsStates.value = new Map(
-      newCards.map((card) => [card.id, card.state])
-    );
-
-    // Update card interactivity based on game state
-    gameInteractions.updateCards(newCards);
+  async () => {
+    if (pixiApp.value && props.cards.length > 0) {
+      await renderCards();
+    }
   },
   { deep: true }
 );
 
+// Watch for game status changes
 watch(
-  () => props.isInteractive,
-  (interactive) => {
-    console.log("🔄 GameCanvas: Setting interactive state to", interactive);
-    gameInteractions.setInteractive(interactive);
+  () => props.gameStatus,
+  async (newStatus) => {
+    if (pixiApp.value && newStatus === "playing") {
+      await renderCards();
+    }
   }
 );
 
-watch([() => props.canvasWidth, () => props.canvasHeight], () => {
-  // Resize canvas when dimensions change
-  if (gameEngine.pixiApp.value) {
-    gameEngine.pixiApp.value.app.renderer.resize(
-      props.canvasWidth,
-      props.canvasHeight
-    );
-    setupCards(); // Recalculate card positions
+// Lifecycle
+onMounted(async () => {
+  await nextTick();
+  if (props.cards.length > 0) {
+    await initializePixi();
   }
 });
 
-// Lifecycle
-onMounted(() => {
-  nextTick(() => {
-    initializeCanvas();
-  });
-});
-
-onBeforeUnmount(() => {
-  console.log("🧹 GameCanvas: Starting cleanup before unmount");
-  // Stop all animations before destroying the engine
-  cardRenderer.stopAllAnimations();
-
-  // Clear sprite references from interactions
-  gameInteractions.clearSprites();
-
-  // Give a small delay to ensure animations are stopped
-  nextTick(() => {
-    cardRenderer.clearAllSprites();
-    gameEngine.destroyEngine();
-  });
-});
-
 onUnmounted(() => {
-  console.log("🧹 GameCanvas: Component unmounted");
+  cleanup();
+});
+
+// Expose methods
+defineExpose({
+  retryInitialization,
+  cleanup,
 });
 </script>
 
 <style scoped>
 .game-canvas-container {
-  min-height: 400px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .game-canvas-container.loading {
-  pointer-events: none;
-}
-
-.game-canvas-container canvas {
-  border-radius: 8px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  opacity: 0.8;
 }
 </style>

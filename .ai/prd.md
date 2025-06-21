@@ -17,6 +17,7 @@ Create an engaging, browser-based memory game featuring Counter-Strike 2 weapons
 - State Management: Pinia store
 - Audio: Web Audio API (OGG Vorbis + AAC fallback)
 - Storage: localStorage for game persistence
+- PIXI.js for rendering
 - External API: CS2 items API for weapon/item data
 - Languages: English (EN)
 
@@ -286,17 +287,7 @@ Memory game enthusiasts and CS2 players lack a high-quality, feature-rich browse
   - QR code can be downloaded as image
   - Code works with standard QR readers
 
-#### US-018: Scan QR Code for Seed
-
-- Title: Scan QR code to load seed
-- Description: As a player, I want to scan QR codes so that I can play seeds shared by others
-- Criteria:
-  - Camera permission requested appropriately
-  - QR code scanning works on mobile and desktop
-  - Invalid QR codes show helpful error messages
-  - Successfully scanned seeds auto-populate game setup
-
-#### US-019: Copy Seed to Clipboard
+#### US-018: Copy Seed to Clipboard
 
 - Title: Copy seed value to clipboard
 - Description: As a player, I want to copy seed values so that I can share them via text
@@ -308,7 +299,7 @@ Memory game enthusiasts and CS2 players lack a high-quality, feature-rich browse
 
 ### 5.6 Settings and Customization
 
-#### US-020: Adjust Audio Settings
+#### US-019: Adjust Audio Settings
 
 - Title: Control audio settings
 - Description: As a player, I want to control audio settings so that I can customize my experience
@@ -318,7 +309,7 @@ Memory game enthusiasts and CS2 players lack a high-quality, feature-rich browse
   - Mute/unmute toggle button
   - Settings persist across sessions
 
-#### US-021: Manage Cache
+#### US-020: Manage Cache
 
 - Title: Manage API data cache
 - Description: As a player, I want to manage cached CS2 data so that I can refresh content when needed
@@ -326,11 +317,10 @@ Memory game enthusiasts and CS2 players lack a high-quality, feature-rich browse
   - View cache size and last update time
   - Manual cache refresh button
   - Clear cache option in settings
-  - Offline fallback when cache is unavailable
 
 ### 5.7 Responsive Design and Accessibility
 
-#### US-022: Play on Mobile Devices
+#### US-021: Play on Mobile Devices
 
 - Title: Play game on mobile devices
 - Description: As a player, I want to play on mobile devices so that I can enjoy the game anywhere
@@ -340,7 +330,7 @@ Memory game enthusiasts and CS2 players lack a high-quality, feature-rich browse
   - Game board adapts to portrait and landscape orientations
   - Performance remains smooth on mobile devices
 
-#### US-023: Play on Different Screen Sizes
+#### US-022: Play on Different Screen Sizes
 
 - Title: Adapt to different screen sizes
 - Description: As a player, I want the game to work on any screen size so that I have a consistent experience
@@ -350,7 +340,7 @@ Memory game enthusiasts and CS2 players lack a high-quality, feature-rich browse
   - Text remains readable across resolutions
   - Navigation works consistently across devices
 
-#### US-024: Handle Network Issues
+#### US-023: Handle Network Issues
 
 - Title: Handle offline scenarios
 - Description: As a player, I want the game to work offline so that network issues don't interrupt gameplay
@@ -362,7 +352,7 @@ Memory game enthusiasts and CS2 players lack a high-quality, feature-rich browse
 
 ### 5.8 Error Handling and Recovery
 
-#### US-025: Handle API Errors
+#### US-024: Handle API Errors
 
 - Title: Handle CS2 API connectivity issues
 - Description: As a player, I want appropriate feedback when CS2 data is unavailable so that I understand the situation
@@ -372,7 +362,7 @@ Memory game enthusiasts and CS2 players lack a high-quality, feature-rich browse
   - Fallback to cached data when possible
   - User option to retry manually
 
-#### US-026: Handle Storage Errors
+#### US-025: Handle Storage Errors
 
 - Title: Handle localStorage issues
 - Description: As a player, I want appropriate handling of storage issues so that the game remains playable
@@ -383,7 +373,7 @@ Memory game enthusiasts and CS2 players lack a high-quality, feature-rich browse
   - Option to clear data to free space
   - Game continues in memory-only mode if needed
 
-#### US-027: Recover from Corrupted Data
+#### US-026: Recover from Corrupted Data
 
 - Title: Recover from corrupted game data
 - Description: As a player, I want automatic recovery from corrupted data so that I can continue playing
@@ -422,5 +412,4 @@ Memory game enthusiasts and CS2 players lack a high-quality, feature-rich browse
 - Code coverage: Minimum 80% test coverage for core functionality
 - Build time: Under 2 minutes for production builds
 - Bundle size: Main bundle under 500KB gzipped
-- Accessibility compliance: WCAG 2.1 AA standards (future implementation)
 - Documentation completeness: All public APIs and user features documented
