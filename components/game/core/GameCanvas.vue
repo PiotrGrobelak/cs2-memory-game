@@ -37,7 +37,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick } from "vue";
+import {
+  ref,
+  onMounted,
+  onUnmounted,
+  watch,
+  nextTick,
+  onBeforeUnmount,
+} from "vue";
 import type { GameCard } from "~/types/game";
 import { useGameEngine } from "~/composables/engine/useGameEngine";
 import { useCardRenderer } from "~/composables/engine/useCardRenderer";
@@ -126,6 +133,17 @@ const initializeCanvas = async () => {
 const setupCards = async () => {
   if (!gameEngine.pixiApp.value) return;
 
+  // Clear any existing sprites and stop animations first
+  cardRenderer.stopAllAnimations();
+
+  // Clear the card container to remove old sprites
+  if (gameEngine.pixiApp.value.cardContainer.children.length > 0) {
+    gameEngine.pixiApp.value.cardContainer.removeChildren();
+  }
+
+  // Clear sprites from renderer cache
+  cardRenderer.clearAllSprites();
+
   previousCardsStates.value.clear();
 
   // Calculate card positions
@@ -158,6 +176,9 @@ const setupCards = async () => {
       gameEngine.pixiApp.value!.cardContainer.addChild(sprite);
       gameInteractions.setupCardInteraction(sprite, handleCardClick);
     });
+
+    // Initialize card interactions with current card states
+    // gameInteractions.updateCards(props.cards);
   }
 };
 
@@ -217,6 +238,9 @@ watch(
     previousCardsStates.value = new Map(
       newCards.map((card) => [card.id, card.state])
     );
+
+    // Update card interactivity based on game state
+    gameInteractions.updateCards(newCards);
   },
   { deep: true }
 );
@@ -224,6 +248,7 @@ watch(
 watch(
   () => props.isInteractive,
   (interactive) => {
+    console.log("🔄 GameCanvas: Setting interactive state to", interactive);
     gameInteractions.setInteractive(interactive);
   }
 );
@@ -246,8 +271,23 @@ onMounted(() => {
   });
 });
 
+onBeforeUnmount(() => {
+  console.log("🧹 GameCanvas: Starting cleanup before unmount");
+  // Stop all animations before destroying the engine
+  cardRenderer.stopAllAnimations();
+
+  // Clear sprite references from interactions
+  gameInteractions.clearSprites();
+
+  // Give a small delay to ensure animations are stopped
+  nextTick(() => {
+    cardRenderer.clearAllSprites();
+    gameEngine.destroyEngine();
+  });
+});
+
 onUnmounted(() => {
-  gameEngine.destroyEngine();
+  console.log("🧹 GameCanvas: Component unmounted");
 });
 </script>
 

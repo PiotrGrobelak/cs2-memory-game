@@ -1,5 +1,5 @@
 import { ref, computed } from "vue";
-import { Assets, Container, Graphics, Sprite, Text } from "pixi.js";
+import { Container, Graphics } from "pixi.js";
 import type { Texture } from "pixi.js";
 import type { Card } from "~/types/pixi";
 import type { GameCard } from "~/types/game";
@@ -62,76 +62,76 @@ export const useCardRenderer = () => {
     cardFront.addChild(background);
 
     // Load and add weapon image if available
-    const imageUrl = card.cs2Item?.imageUrl;
-    if (imageUrl) {
-      try {
-        // Create sprite directly from URL
-        const texture = await Assets.load(imageUrl);
-        const imageSprite = new Sprite(texture);
+    // const imageUrl = card.cs2Item?.imageUrl;
+    // if (imageUrl) {
+    //   try {
+    //     // Create sprite directly from URL
+    //     const texture = await Assets.load(imageUrl);
+    //     const imageSprite = new Sprite(texture);
 
-        // Calculate image dimensions with padding
-        const padding = 15;
-        const maxWidth = cardWidth - padding * 2;
-        const maxHeight = cardHeight - padding * 2;
+    //     // Calculate image dimensions with padding
+    //     const padding = 15;
+    //     const maxWidth = cardWidth - padding * 2;
+    //     const maxHeight = cardHeight - padding * 2;
 
-        // Scale image to fit within card bounds
-        const scale = Math.min(
-          maxWidth / imageSprite.texture.width,
-          maxHeight / imageSprite.texture.height
-        );
-        imageSprite.scale.set(scale);
+    //     // Scale image to fit within card bounds
+    //     const scale = Math.min(
+    //       maxWidth / imageSprite.texture.width,
+    //       maxHeight / imageSprite.texture.height
+    //     );
+    //     imageSprite.scale.set(scale);
 
-        // // Center the image
-        // imageSprite.x = -imageSprite.width / 2;
-        // imageSprite.y = -imageSprite.height / 2;
+    //     // // Center the image
+    //     // imageSprite.x = -imageSprite.width / 2;
+    //     // imageSprite.y = -imageSprite.height / 2;
 
-        // // // Set initial position (will be adjusted when loaded)
-        // imageSprite.x = -cardWidth / 4;
-        // imageSprite.y = -cardHeight / 4;
+    //     // // // Set initial position (will be adjusted when loaded)
+    //     // imageSprite.x = -cardWidth / 4;
+    //     // imageSprite.y = -cardHeight / 4;
 
-        imageSprite.x = 0;
-        imageSprite.y = 0;
-        imageSprite.anchor.set(0.5);
+    //     imageSprite.x = 0;
+    //     imageSprite.y = 0;
+    //     imageSprite.anchor.set(0.5);
 
-        // imageSprite.scale.set(0);
-        // imageSprite.alpha = 0;
+    //     // imageSprite.scale.set(0);
+    //     // imageSprite.alpha = 0;
 
-        cardFront.addChild(imageSprite);
-      } catch (error: unknown) {
-        // Fallback: show error text if sprite creation fails
-        const errorText = new Text({
-          text: `Image\nError: ${error instanceof Error ? error.message : "Unknown error"}`,
-          style: {
-            fontSize: 14,
-            fill: 0xff0000,
-            align: "center",
-            fontFamily: "Arial, sans-serif",
-          },
-        });
+    //     cardFront.addChild(imageSprite);
+    //   } catch (error: unknown) {
+    //     // Fallback: show error text if sprite creation fails
+    //     const errorText = new Text({
+    //       text: `Image\nError: ${error instanceof Error ? error.message : "Unknown error"}`,
+    //       style: {
+    //         fontSize: 14,
+    //         fill: 0xff0000,
+    //         align: "center",
+    //         fontFamily: "Arial, sans-serif",
+    //       },
+    //     });
 
-        errorText.x = -errorText.width / 2;
-        errorText.y = -errorText.height / 2;
-        cardFront.addChild(errorText);
-      }
-    } else {
-      // Fallback: show weapon name if no image URL
-      const weaponName = card.cs2Item?.name || "Unknown";
-      const nameText = new Text({
-        text: weaponName,
-        style: {
-          fontSize: 12,
-          fill: 0xffffff,
-          align: "center",
-          fontFamily: "Arial, sans-serif",
-          wordWrap: true,
-          wordWrapWidth: cardWidth - 20,
-        },
-      });
+    //     errorText.x = -errorText.width / 2;
+    //     errorText.y = -errorText.height / 2;
+    //     cardFront.addChild(errorText);
+    //   }
+    // } else {
+    //   // Fallback: show weapon name if no image URL
+    //   const weaponName = card.cs2Item?.name || "Unknown";
+    //   const nameText = new Text({
+    //     text: weaponName,
+    //     style: {
+    //       fontSize: 12,
+    //       fill: 0xffffff,
+    //       align: "center",
+    //       fontFamily: "Arial, sans-serif",
+    //       wordWrap: true,
+    //       wordWrapWidth: cardWidth - 20,
+    //     },
+    //   });
 
-      nameText.x = -nameText.width / 2;
-      nameText.y = -nameText.height / 2;
-      cardFront.addChild(nameText);
-    }
+    //   nameText.x = -nameText.width / 2;
+    //   nameText.y = -nameText.height / 2;
+    //   cardFront.addChild(nameText);
+    // }
 
     return cardFront;
   };
@@ -164,14 +164,25 @@ export const useCardRenderer = () => {
     const cardBack = createBackCard(cardWidth, cardHeight);
 
     // Create card front with weapon image (hidden initially)
-    // const cardFront = await createCardFront(card, cardWidth, cardHeight);
-    // cardFront.alpha = 0; // Hidden initially
-    // cardObject.addChild(cardFront);
+    const cardFront = await _createCardFront(card, cardWidth, cardHeight);
+
+    cardObject.addChild(cardFront);
     cardObject.addChild(cardBack);
 
     // Store references to card faces
-    // cardObject.cardFront = cardFront;
-    // cardObject.cardBack = cardBack;
+    cardObject.cardFront = cardFront;
+    cardObject.cardBack = cardBack;
+
+    // Set initial visibility based on card state
+    // Initially, all cards should show their back (hidden state)
+    cardFront.alpha = 0; // Hide front initially
+    cardBack.alpha = 1; // Show back initially
+
+    // If the card should already be revealed (e.g., during game restoration), show the front
+    if (card.state === "revealed" || card.state === "matched") {
+      cardFront.alpha = 1;
+      cardBack.alpha = 0;
+    }
 
     // Add to cache
     cardSprites.value.set(card.id, cardObject);
@@ -180,9 +191,12 @@ export const useCardRenderer = () => {
   };
 
   const updateCardState = (cardId: string, state: GameCard["state"]) => {
-    console.log("Run updateCardState");
+    console.log("Run updateCardState for", cardId, "new state:", state);
     const sprite = cardSprites.value.get(cardId);
-    if (!sprite) return;
+    if (!sprite) {
+      console.warn("Sprite not found for card:", cardId);
+      return;
+    }
 
     // Flip animation based on state
     switch (state) {
@@ -199,14 +213,18 @@ export const useCardRenderer = () => {
   };
 
   const animateFlip = (sprite: Card, reveal: boolean) => {
-    console.log("Run animateFlip");
-    if (sprite.isFlipping) return; // Prevent multiple animations
+    console.log("Run animateFlip for", sprite.cardId, "reveal:", reveal);
+    if (sprite.isFlipping) {
+      console.log("Card is already flipping, skipping animation");
+      return; // Prevent multiple animations
+    }
 
     sprite.isFlipping = true;
     const cardBack = sprite.cardBack;
     const cardFront = sprite.cardFront;
 
     if (!cardBack || !cardFront) {
+      console.error("Card faces not found for sprite:", sprite.cardId);
       sprite.isFlipping = false;
       return;
     }
@@ -214,33 +232,67 @@ export const useCardRenderer = () => {
     let progress = 0;
     const duration = 0.5; // 500ms animation
     const startTime = Date.now();
+    let animationId: number;
 
     const animate = () => {
+      // Safety check: ensure sprite still exists and hasn't been destroyed
+      if (!sprite || sprite.destroyed || !sprite.scale) {
+        console.warn(
+          "Sprite destroyed during animation, stopping:",
+          sprite.cardId
+        );
+        return;
+      }
+
       const elapsed = (Date.now() - startTime) / 1000;
       progress = Math.min(elapsed / duration, 1);
 
-      // Calculate scale for flip effect (goes from 1 to 0 to 1)
-      const scale = Math.abs(Math.cos(progress * Math.PI));
-      sprite.scale.x = scale;
+      try {
+        // Calculate scale for flip effect (goes from 1 to 0 to 1)
+        const scale = Math.abs(Math.cos(progress * Math.PI));
+        sprite.scale.x = scale;
 
-      // Switch content at the middle of animation (when scale is near 0)
-      if (progress > 0.5) {
-        if (reveal) {
-          cardBack.alpha = 0;
-          cardFront.alpha = 1;
-        } else {
-          cardBack.alpha = 1;
-          cardFront.alpha = 0;
+        // Switch content at the middle of animation (when scale is near 0)
+        if (progress > 0.5) {
+          if (reveal) {
+            cardBack.alpha = 0;
+            cardFront.alpha = 1;
+          } else {
+            cardBack.alpha = 1;
+            cardFront.alpha = 0;
+          }
         }
-      }
 
-      sprite.flipProgress = progress;
+        sprite.flipProgress = progress;
 
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
+        if (progress < 1) {
+          animationId = requestAnimationFrame(animate);
+        } else {
+          sprite.isFlipping = false;
+          sprite.scale.x = 1; // Ensure final scale is 1
+
+          // Ensure final state is correct
+          if (reveal) {
+            cardBack.alpha = 0;
+            cardFront.alpha = 1;
+          } else {
+            cardBack.alpha = 1;
+            cardFront.alpha = 0;
+          }
+
+          console.log(
+            "Flip animation completed for",
+            sprite.cardId,
+            "front visible:",
+            cardFront.alpha === 1
+          );
+        }
+      } catch (error) {
+        console.error("Error during animation for", sprite.cardId, ":", error);
         sprite.isFlipping = false;
-        sprite.scale.x = 1; // Ensure final scale is 1
+        if (animationId) {
+          cancelAnimationFrame(animationId);
+        }
       }
     };
 
@@ -298,10 +350,48 @@ export const useCardRenderer = () => {
     sprite.y = sprite.originalPosition.y + offsetY;
   };
 
+  const debugCardRenderer = (): void => {
+    console.log("🐛 Card Renderer Debug:");
+    console.log(`Total sprites: ${cardSprites.value.size}`);
+
+    cardSprites.value.forEach((sprite, cardId) => {
+      const card = sprite as Card;
+      console.log(`Card ${cardId}:`, {
+        isFlipping: card.isFlipping,
+        flipProgress: card.flipProgress,
+        frontAlpha: card.cardFront?.alpha,
+        backAlpha: card.cardBack?.alpha,
+        scaleX: card.scale.x,
+        cardData: card.cardData?.state,
+      });
+    });
+  };
+
+  const stopAllAnimations = (): void => {
+    console.log("🛑 Stopping all card animations");
+    cardSprites.value.forEach((sprite) => {
+      const card = sprite as Card;
+      if (card.isFlipping) {
+        card.isFlipping = false;
+        console.log("Stopped animation for card:", card.cardId);
+      }
+    });
+  };
+
+  const clearAllSprites = (): void => {
+    console.log("🧹 Clearing all card sprites");
+    stopAllAnimations();
+    cardSprites.value.clear();
+    _textureCache.value.clear();
+  };
+
   return {
     cardSprites: computed(() => cardSprites.value),
     createCard,
     updateCardState,
     applyParallaxEffect,
+    debugCardRenderer,
+    stopAllAnimations,
+    clearAllSprites,
   };
 };

@@ -62,12 +62,18 @@ export const useGameCardsStore = defineStore("game-cards", () => {
       return false;
     }
 
-    // Don't allow new selections if 2 cards are already selected (not revealed!)
+    // Don't allow new selections if 2 cards are already selected
     if (selectedCards.value.length >= 2) {
       console.log(
         `❌ Too many selected cards (${selectedCards.value.length}):`,
         selectedCards.value
       );
+      return false;
+    }
+
+    // Additional safety check - make sure this card isn't already selected
+    if (selectedCards.value.includes(cardId)) {
+      console.log(`❌ Card ${cardId} already selected`);
       return false;
     }
 
@@ -138,22 +144,48 @@ export const useGameCardsStore = defineStore("game-cards", () => {
       console.log(
         `❌ No match - scheduling hide for cards ${firstCard.id} and ${secondCard.id} in 1000ms`
       );
+
+      // Store references to avoid closure issues
+      const cardToHide1 = firstCard;
+      const cardToHide2 = secondCard;
+
       setTimeout(() => {
         console.log(
-          `⏰ Hiding non-matched cards ${firstCard.id} and ${secondCard.id}`
+          `⏰ Timeout triggered - attempting to hide cards ${cardToHide1.id} and ${cardToHide2.id}`
         );
-        // Check if cards are still in revealed state before hiding
-        if (firstCard.state === "revealed") {
-          firstCard.state = "hidden";
-          console.log(`🔄 Card ${firstCard.id} hidden`);
-        }
-        if (secondCard.state === "revealed") {
-          secondCard.state = "hidden";
-          console.log(`🔄 Card ${secondCard.id} hidden`);
-        }
         console.log(
-          `🔄 Cards hiding complete, current revealed count: ${revealedCards.value.length}`
+          `Current states: ${cardToHide1.id}=${cardToHide1.state}, ${cardToHide2.id}=${cardToHide2.state}`
         );
+
+        let hiddenCount = 0;
+
+        // Check if cards are still in revealed state before hiding
+        if (cardToHide1.state === "revealed") {
+          cardToHide1.state = "hidden";
+          hiddenCount++;
+          console.log(`🔄 Card ${cardToHide1.id} hidden`);
+        } else {
+          console.log(
+            `⚠️  Card ${cardToHide1.id} not hidden - current state: ${cardToHide1.state}`
+          );
+        }
+
+        if (cardToHide2.state === "revealed") {
+          cardToHide2.state = "hidden";
+          hiddenCount++;
+          console.log(`🔄 Card ${cardToHide2.id} hidden`);
+        } else {
+          console.log(
+            `⚠️  Card ${cardToHide2.id} not hidden - current state: ${cardToHide2.state}`
+          );
+        }
+
+        console.log(
+          `🔄 Cards hiding complete, ${hiddenCount} cards hidden, current revealed count: ${revealedCards.value.length}`
+        );
+
+        // Force reactivity update
+        cards.value = [...cards.value];
       }, 1000);
     }
 
@@ -280,6 +312,32 @@ export const useGameCardsStore = defineStore("game-cards", () => {
       }
     });
     selectedCards.value = [];
+  };
+
+  const debugCardStates = (): void => {
+    console.log("🐛 Debug Card States:");
+    console.log(`Total cards: ${cards.value.length}`);
+    console.log(`Hidden: ${hiddenCards.value.length}`);
+    console.log(`Revealed: ${revealedCards.value.length}`);
+    console.log(`Matched: ${matchedCards.value.length}`);
+    console.log(`Selected: ${selectedCards.value.length}`);
+
+    console.log(
+      "Revealed cards:",
+      revealedCards.value.map((c) => ({ id: c.id, pairId: c.pairId }))
+    );
+    console.log("Selected cards:", selectedCards.value);
+
+    // Check for any inconsistencies
+    const totalStates =
+      hiddenCards.value.length +
+      revealedCards.value.length +
+      matchedCards.value.length;
+    if (totalStates !== cards.value.length) {
+      console.warn(
+        `⚠️  State count mismatch! Total cards: ${cards.value.length}, Total states: ${totalStates}`
+      );
+    }
   };
 
   // Helper functions
@@ -592,5 +650,6 @@ export const useGameCardsStore = defineStore("game-cards", () => {
     restoreState,
     debugCheckAdjacentPairs,
     debugGetCardGrid,
+    debugCardStates,
   };
 });
