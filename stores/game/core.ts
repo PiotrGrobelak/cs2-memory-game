@@ -12,6 +12,7 @@ export const useGameCoreStore = defineStore("game-core", () => {
     gridSize: { rows: 3, cols: 4 },
   });
   const isPlaying = ref(false);
+  const isPaused = ref(false);
   const stats = ref<GameStats>({
     moves: 0,
     timeElapsed: 0,
@@ -62,20 +63,24 @@ export const useGameCoreStore = defineStore("game-core", () => {
 
   const startGame = () => {
     isPlaying.value = true;
+    isPaused.value = false;
   };
 
   const pauseGame = () => {
     isPlaying.value = false;
+    isPaused.value = true;
   };
 
   const resumeGame = () => {
     isPlaying.value = true;
+    isPaused.value = false;
   };
 
   const resetGameState = () => {
     gameId.value = "";
     seed.value = "";
     isPlaying.value = false;
+    isPaused.value = false;
     stats.value = {
       moves: 0,
       timeElapsed: 0,
@@ -94,7 +99,8 @@ export const useGameCoreStore = defineStore("game-core", () => {
   };
 
   const completeGame = () => {
-    pauseGame();
+    isPlaying.value = false;
+    isPaused.value = false;
     stats.value.isComplete = true;
   };
 
@@ -158,6 +164,7 @@ export const useGameCoreStore = defineStore("game-core", () => {
     seed,
     difficulty,
     isPlaying,
+    isPaused,
     stats,
 
     // Getters

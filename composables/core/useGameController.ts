@@ -1,526 +1,676 @@
 /**
- * useGameController - Main orchestrator composable for the CS2 Memory Game
+ * useGameControlV2 - Simplified game orchestrator based on working GameInterface.vue logic
  *
- * This composable serves as the central controller that coordinates all game systems:
- * - Manages game initialization sequence with proper error handling
- * - Orchestrates interactions between game engine, persistence, seed system, and CS2 data
- * - Handles game state management including save/load/restart operations
- * - Provides auto-save functionality and game session management
- * - Controls game flow from initialization through completion
+ * This composable provides a clean, simplified API for game management:
+ * - Direct store integration without complex orchestration
+ * - Canvas and fallback UI state management
+ * - Simplified game initialization and controls
+ * - Dialog state management
+ * - Game sharing functionality
+ * - Timer synchronization with game stats
  *
- * Key responsibilities:
- * - Initialize all subsystems in correct order
- * - Manage game options and seed-based gameplay
- * - Handle persistence operations for game state and history
- * - Coordinate new game creation and existing game restoration
- * - Provide unified interface for game lifecycle management
+ * Key improvements over useGameController:
+ * - Simplified initialization without complex error handling
+ * - Direct store usage pattern like successful GameInterface.vue
+ * - Canvas state management included
+ * - Integrated dialog management
+ * - Cleaner separation of concerns
  */
-import { ref, computed, watch, nextTick } from "vue";
-import type { GameState, GameOptions, GameResult } from "~/types/game";
+import { ref, computed, watch, nextTick, onUnmounted } from "vue";
+import type { GameOptions, GameResult } from "~/types/game";
+import { useToast } from "primevue/usetoast";
 
-// Import all the composables we need to orchestrate
-import { useGame } from "~/composables/core/useGame";
-import { useCS2Data } from "~/composables/data/useCS2Data";
-import { useSeedSystem } from "~/composables/data/useSeedSystem";
-import { useGamePersistence } from "~/composables/data/useGamePersistence";
+// Stores - Direct usage like GameInterface.vue
+import { useGameUIStore } from "~/stores/game/ui";
 import { useGameCoreStore } from "~/stores/game/core";
 import { useGameCardsStore } from "~/stores/game/cards";
+import { useGameTimerStore } from "~/stores/game/timer";
 
-export interface GameControllerState {
-  isInitializing: boolean;
-  initializationStep: string;
-  error: string | null;
+// Data composables
+import { useCS2Data } from "~/composables/data/useCS2Data";
+import { useGamePersistence } from "~/composables/data/useGamePersistence";
+
+export interface GameControlV2State {
+  isLoading: boolean;
+  showFallbackUI: boolean;
+  seedHistory: string[];
+  autoSaveEnabled: boolean;
   lastAutoSave: number | null;
-  hasUnsavedChanges: boolean;
+  hasUnfinishedGame: boolean;
 }
 
 export const useGameController = () => {
-  // Initialize all systems
-  const game = useGame();
-  const cs2Data = useCS2Data();
-  const seedSystem = useSeedSystem();
-  const persistence = useGamePersistence();
+  // Initialize composables
+  const toast = useToast();
+  const { initializeData } = useCS2Data();
+  const { loadGameHistory, saveGameState, loadGameState, deleteGameState } =
+    useGamePersistence();
+
+  // Initialize stores
+  const uiStore = useGameUIStore();
   const coreStore = useGameCoreStore();
   const cardsStore = useGameCardsStore();
+  const timerStore = useGameTimerStore();
 
-  // Controller state
-  const state = ref<GameControllerState>({
-    isInitializing: false,
-    initializationStep: "",
-    error: null,
+  // Local state
+  const state = ref<GameControlV2State>({
+    isLoading: false,
+    showFallbackUI: false,
+    seedHistory: [],
+    autoSaveEnabled: true,
     lastAutoSave: null,
-    hasUnsavedChanges: false,
+    hasUnfinishedGame: false,
   });
 
-  // Track saved game state for UI decisions
-  const savedGameInfo = ref<{
-    exists: boolean;
-    wasPlaying: boolean;
-    difficulty: string;
-    progress: number;
-  }>({
-    exists: false,
-    wasPlaying: false,
-    difficulty: "",
-    progress: 0,
+  // Build complete game state for persistence - declare early for lifecycle hooks
+  const buildCurrentGameState = () => {
+    return {
+      id: `${coreStore.seed}-${coreStore.difficulty.name}`,
+      seed: coreStore.seed,
+      difficulty: coreStore.difficulty,
+      cards: cardsStore.cards,
+      stats: {
+        ...coreStore.stats,
+        timeElapsed: timerStore.timeElapsed, // Use actual timer value
+      },
+      startTime: timerStore.startTime,
+      isPlaying: coreStore.isPlaying,
+      selectedCards: cardsStore.selectedCards,
+      gameHistory: [],
+    };
+  };
+
+  // Auto-save functionality for US-013 - declare early for lifecycle hooks
+  const autoSaveGameState = async () => {
+    console.log("🔄 Auto-saving game state");
+    if (!state.value.autoSaveEnabled || state.value.isLoading) return;
+
+    // Only save if game is active and has content
+    if (cardsStore.cards.length === 0) return;
+
+    try {
+      const gameState = buildCurrentGameState();
+      const success = await saveGameState(gameState);
+
+      if (success) {
+        state.value.lastAutoSave = Date.now();
+        console.log("🎮 Game state auto-saved");
+      }
+    } catch (error) {
+      console.error("❌ Auto-save failed:", error);
+    }
+  };
+
+  // Setup lifecycle hooks immediately (before any await operations)
+  // Auto-save when component unmounts if game is active
+  onUnmounted(async () => {
+    if (coreStore.isPlaying && cardsStore.cards.length > 0) {
+      console.log("🔄 Component unmounting - auto-saving active game");
+      await autoSaveGameState();
+      console.log("💾 Game state saved before component unmount");
+    }
   });
 
-  // Computed properties
-  const isReady = computed(() => {
-    return (
-      !state.value.isInitializing &&
-      cs2Data.hasItems.value &&
-      seedSystem.isValidSeed.value
-    );
-  });
+  // Auto-save before page unload (when user closes tab/window)
+  if (typeof window !== "undefined") {
+    const handleBeforeUnload = async () => {
+      if (coreStore.isPlaying && cardsStore.cards.length > 0) {
+        console.log("🚪 Page unloading - auto-saving active game");
+        await autoSaveGameState();
+        console.log("💾 Game state saved before page unload");
+      }
+    };
 
-  const gameProgress = computed(() => {
-    if (!game.stats.value) return 0;
-    const { matchesFound, totalPairs } = game.stats.value;
-    return totalPairs > 0 ? (matchesFound / totalPairs) * 100 : 0;
-  });
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
+    // Clean up event listener on unmount
+    onUnmounted(() => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    });
+  }
+
+  // Difficulty configurations
+  const difficulties = computed(() => [
+    {
+      name: "easy" as const,
+      label: "Easy",
+      cardCount: 12,
+      gridSize: { rows: 3, cols: 4 },
+    },
+    {
+      name: "medium" as const,
+      label: "Medium",
+      cardCount: 24,
+      gridSize: { rows: 4, cols: 6 },
+    },
+    {
+      name: "hard" as const,
+      label: "Hard",
+      cardCount: 48,
+      gridSize: { rows: 6, cols: 8 },
+    },
+  ]);
+
+  // Computed properties - Direct from stores
   const gameStatus = computed(() => {
-    if (state.value.isInitializing) return "initializing";
-    if (state.value.error) return "error";
-    if (game.isGameComplete.value) return "completed";
-    if (game.isPlaying.value) return "playing";
+    if (state.value.isLoading) return "initializing";
+    if (!coreStore.isPlaying && cardsStore.cards.length === 0) return "ready";
+    if (coreStore.isPlaying) return "playing";
+    if (coreStore.isPaused && cardsStore.cards.length > 0) return "paused";
+    if (coreStore.isGameComplete) return "completed";
     return "ready";
   });
 
-  const canContinueSavedGame = computed(() => {
-    return savedGameInfo.value.exists && gameStatus.value === "ready";
+  const gameProgress = computed(() => {
+    if (cardsStore.cards.length === 0) return 0;
+    const totalPairs = coreStore.stats.totalPairs;
+    const matchedPairs = coreStore.stats.matchesFound;
+    return totalPairs > 0 ? (matchedPairs / totalPairs) * 100 : 0;
   });
 
-  // Auto-save functionality
-  const shouldAutoSave = computed(() => {
-    return game.isPlaying.value && state.value.hasUnsavedChanges;
+  const canShare = computed(() => cardsStore.cards.length > 0);
+
+  const isGameReady = computed(
+    () => !state.value.isLoading && cardsStore.cards.length > 0
+  );
+
+  // New computed - check if there's an active game that can be resumed
+  const canResumeGame = computed(() => {
+    return state.value.hasUnfinishedGame && !state.value.isLoading;
   });
 
-  // Actions
-  const initializeGame = async (
-    options: Partial<GameOptions> = {}
-  ): Promise<boolean> => {
-    state.value.isInitializing = true;
-    state.value.error = null;
+  // Seed validator
+  const seedValidator = (seed: string) => {
+    if (!seed.trim()) {
+      return { isValid: false, error: "Seed cannot be empty" };
+    }
+    if (seed.length < 3) {
+      return { isValid: false, error: "Seed must be at least 3 characters" };
+    }
+    if (seed.length > 50) {
+      return { isValid: false, error: "Seed must be less than 50 characters" };
+    }
+    return { isValid: true, error: null };
+  };
 
+  // Restore game state from persistence
+  const restoreGameState = async (): Promise<boolean> => {
     try {
-      // Step 1: Initialize seed system
-      state.value.initializationStep = "Initializing seed system...";
-      seedSystem.initialize();
+      state.value.isLoading = true;
 
-      // Step 2: Load CS2 data
-      state.value.initializationStep = "Loading CS2 items...";
-      await cs2Data.initializeData(100); // Load enough items for any difficulty
-
-      if (!cs2Data.hasItems.value) {
-        throw new Error("Failed to load CS2 items data");
+      const savedState = await loadGameState();
+      if (!savedState) {
+        console.log("🔄 No saved game state found");
+        return false;
       }
 
-      // Step 3: Load saved options
-      state.value.initializationStep = "Loading game options...";
-      const savedOptions = await persistence.loadGameOptions();
-      const finalOptions: GameOptions = {
-        difficulty: "easy",
-        enableSound: true,
-        enableParallax: true,
-        ...savedOptions,
-        ...options,
-      };
+      console.log("🔄 Restoring game state...", savedState);
 
-      // Step 4: Check for existing game state
-      state.value.initializationStep = "Checking for saved game...";
-      const savedGameState = await persistence.loadGameState();
+      // Restore core state
+      coreStore.seed = savedState.seed;
+      coreStore.difficulty = savedState.difficulty;
+      coreStore.isPlaying = savedState.isPlaying;
 
-      if (savedGameState && !options.seed) {
-        // Update saved game info for UI
-        savedGameInfo.value = {
-          exists: true,
-          wasPlaying: savedGameState.isPlaying,
-          difficulty: savedGameState.difficulty.name,
-          progress:
-            (savedGameState.stats.matchesFound /
-              savedGameState.stats.totalPairs) *
-            100,
-        };
-
-        // Restore existing game but don't auto-start it
-        state.value.initializationStep = "Restoring saved game...";
-        await restoreGameStateWithoutAutoStart(savedGameState);
-      } else {
-        // No saved game exists
-        savedGameInfo.value = {
-          exists: false,
-          wasPlaying: false,
-          difficulty: "",
-          progress: 0,
-        };
-
-        // Prepare new game but don't auto-start it
-        state.value.initializationStep = "Preparing new game...";
-        await prepareNewGame(finalOptions);
+      // If the saved game wasn't playing, it should be in paused state
+      if (
+        !savedState.isPlaying &&
+        savedState.cards &&
+        savedState.cards.length > 0
+      ) {
+        coreStore.isPaused = true;
       }
 
-      // Step 5: Save current options
-      await persistence.saveGameOptions(finalOptions);
+      coreStore.restoreStats(savedState.stats);
 
-      state.value.initializationStep = "Ready!";
+      // Restore cards state
+      cardsStore.restoreState(savedState.cards);
+
+      // Restore timer state - critical for US-013
+      timerStore.restoreTimer(savedState.stats.timeElapsed);
+
+      // Initialize CS2 data if needed
+      await initializeData(100);
+
+      // Don't clear hasUnfinishedGame here - let the UI handle the state properly
+      console.log("✅ Game state restored successfully");
+
+      toast.add({
+        severity: "info",
+        summary: "Game Resumed",
+        detail: "Your previous game has been restored",
+        life: 3000,
+      });
+
       return true;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown initialization error";
-      state.value.error = errorMessage;
-      console.error("Game controller initialization failed:", error);
+      console.error("❌ Failed to restore game state:", error);
+      // Clear corrupted save data
+      await deleteGameState();
+      state.value.hasUnfinishedGame = false;
+
+      toast.add({
+        severity: "warn",
+        summary: "Resume Failed",
+        detail: "Could not restore previous game",
+        life: 3000,
+      });
+
       return false;
     } finally {
-      state.value.isInitializing = false;
+      state.value.isLoading = false;
     }
   };
 
-  const startNewGame = async (options: GameOptions): Promise<void> => {
-    // Set seed if provided, otherwise use current one
-    if (options.seed) {
-      const seedSet = seedSystem.setCustomSeed(options.seed);
-      if (!seedSet) {
-        throw new Error("Invalid seed provided");
-      }
-    }
-
-    // Get CS2 items for the game using the current seed
-    const requiredItemCount = getDifficultyItemCount(options.difficulty);
-
-    const gameItems = cs2Data.getItemsForGame(
-      requiredItemCount,
-      seedSystem.state.value.currentSeed
-    );
-
-    if (gameItems.length < requiredItemCount) {
-      throw new Error(
-        `Not enough CS2 items available. Required: ${requiredItemCount}, Available: ${gameItems.length}`
-      );
-    }
-
-    // Initialize the game with these items
-    await game.initializeNewGame(options);
-
-    // Set the CS2 items in the cards store
-    cardsStore.setCS2Items(gameItems);
-
-    // Clear any previous save
-    await persistence.deleteGameState();
-    state.value.hasUnsavedChanges = false;
-  };
-
-  const prepareNewGame = async (options: GameOptions): Promise<void> => {
-    // Set seed if provided, otherwise use current one
-    if (options.seed) {
-      const seedSet = seedSystem.setCustomSeed(options.seed);
-      if (!seedSet) {
-        throw new Error("Invalid seed provided");
-      }
-    }
-
-    // Get CS2 items for the game using the current seed
-    const requiredItemCount = getDifficultyItemCount(options.difficulty);
-
-    const gameItems = cs2Data.getItemsForGame(
-      requiredItemCount,
-      seedSystem.state.value.currentSeed
-    );
-
-    if (gameItems.length < requiredItemCount) {
-      throw new Error(
-        `Not enough CS2 items available. Required: ${requiredItemCount}, Available: ${gameItems.length}`
-      );
-    }
-
-    // Initialize the game with these items but don't start it
-    await game.initializeNewGame(options);
-
-    // Set the CS2 items in the cards store
-    cardsStore.setCS2Items(gameItems);
-
-    // Clear any previous save
-    await persistence.deleteGameState();
-    state.value.hasUnsavedChanges = false;
-  };
-
-  const restoreGameState = async (gameState: GameState): Promise<void> => {
-    // Validate game state
-    if (!gameState.seed) {
-      console.warn("GameState has no seed, generating a new one");
-      seedSystem.setRandomSeed();
-    } else {
-      // Restore seed
-      const success = seedSystem.setSeed(gameState.seed, true);
-      if (!success) {
-        console.warn("Failed to set saved seed, generating a new one");
-        seedSystem.setRandomSeed();
-      }
-    }
-
-    // Restore game state
-    await game.initializeNewGame({
-      difficulty: gameState.difficulty.name,
-      seed: seedSystem.state.value.currentSeed, // Use current seed instead of gameState.seed
-    });
-
-    // Restore cards and game progress
-    cardsStore.restoreState(gameState.cards);
-    coreStore.restoreStats(gameState.stats);
-
-    if (gameState.isPlaying) {
-      game.resumeGame();
-    }
-
-    state.value.hasUnsavedChanges = false;
-  };
-
-  const restoreGameStateWithoutAutoStart = async (
-    gameState: GameState
-  ): Promise<void> => {
-    // Validate game state
-    if (!gameState.seed) {
-      console.warn("GameState has no seed, generating a new one");
-      seedSystem.setRandomSeed();
-    } else {
-      // Restore seed
-      const success = seedSystem.setSeed(gameState.seed, true);
-      if (!success) {
-        console.warn("Failed to set saved seed, generating a new one");
-        seedSystem.setRandomSeed();
-      }
-    }
-
-    // Restore game state
-    await game.initializeNewGame({
-      difficulty: gameState.difficulty.name,
-      seed: seedSystem.state.value.currentSeed, // Use current seed instead of gameState.seed
-    });
-
-    // Restore cards and game progress
-    cardsStore.restoreState(gameState.cards);
-    coreStore.restoreStats(gameState.stats);
-
-    // Don't auto-resume the game, let the user decide
-    // Note: Game will be in 'ready' state and user can click "Continue Game" or "Start Game"
-
-    state.value.hasUnsavedChanges = false;
-  };
-
-  const saveGame = async (): Promise<boolean> => {
+  // Check for unfinished games on initialization
+  const checkForUnfinishedGame = async () => {
     try {
-      const currentGameState: GameState = {
-        id: game.gameId.value,
-        seed: game.seed.value,
-        difficulty: game.difficulty.value,
-        cards: game.cards.value,
-        stats: game.stats.value,
-        startTime: Date.now() - game.timeElapsed.value * 1000,
-        isPlaying: game.isPlaying.value,
-        selectedCards: game.selectedCards.value,
-        gameHistory: [], // This will be loaded separately
-      };
+      const savedState = await loadGameState();
+      // A game is considered unfinished if:
+      // 1. It was playing (isPlaying: true)
+      // 2. It was paused (isPaused: true)
+      // 3. It has cards and is not completed
+      state.value.hasUnfinishedGame = !!(
+        savedState &&
+        (savedState.isPlaying ||
+          (savedState.cards &&
+            savedState.cards.length > 0 &&
+            !savedState.stats.isComplete))
+      );
 
-      const success = await persistence.saveGameState(currentGameState);
-      if (success) {
-        state.value.hasUnsavedChanges = false;
-        state.value.lastAutoSave = Date.now();
+      if (state.value.hasUnfinishedGame) {
+        console.log("🎮 Unfinished game found, seed:", savedState?.seed);
+        console.log(
+          "🎮 Game state - isPlaying:",
+          savedState?.isPlaying,
+          "cards:",
+          savedState?.cards?.length
+        );
       }
-      return success;
     } catch (error) {
-      console.error("Failed to save game:", error);
-      return false;
+      console.error("❌ Error checking for unfinished game:", error);
+      state.value.hasUnfinishedGame = false;
     }
   };
 
-  const completeGame = async (): Promise<void> => {
-    // Complete the game
-    game.completeGame();
+  // Resume unfinished game
+  const resumeUnfinishedGame = async (): Promise<boolean> => {
+    if (!state.value.hasUnfinishedGame) return false;
 
-    // Create game result for history
-    const gameResult: GameResult = {
-      id: game.gameId.value,
-      seed: game.seed.value,
-      difficulty: game.difficulty.value.name,
-      moves: game.stats.value.moves,
-      timeElapsed: game.timeElapsed.value,
-      completedAt: new Date(),
-      score: game.currentScore.value,
-    };
+    const success = await restoreGameState();
+    if (success) {
+      // Clear the unfinished game flag after successful restoration
+      state.value.hasUnfinishedGame = false;
 
-    // Save to history
-    await persistence.saveGameResult(gameResult);
+      // If the game was paused, resume it
+      if (coreStore.isPaused) {
+        coreStore.resumeGame();
+        timerStore.startTimer();
+        console.log("⏰ Timer resumed from paused state");
+      } else if (coreStore.isPlaying) {
+        // Restart timer if game was playing
+        timerStore.startTimer();
+        console.log("⏰ Timer resumed from playing state");
+      }
+    }
 
-    // Clear current game state
-    await persistence.deleteGameState();
-    state.value.hasUnsavedChanges = false;
+    return success;
   };
 
-  const restartGame = async (): Promise<void> => {
-    const currentOptions: GameOptions = {
-      difficulty: game.difficulty.value.name,
-      seed: game.seed.value,
-      enableSound: true,
-      enableParallax: true,
-    };
+  // Clear unfinished game data
+  const clearUnfinishedGame = async () => {
+    try {
+      await deleteGameState();
+      state.value.hasUnfinishedGame = false;
+      console.log("🗑️ Unfinished game data cleared");
+    } catch (error) {
+      console.error("❌ Failed to clear unfinished game:", error);
+    }
+  };
 
+  // Game initialization - Simplified like GameInterface.vue
+  const initializeGame = async (options: Partial<GameOptions> = {}) => {
+    try {
+      state.value.isLoading = true;
+
+      // Reset timer first
+      timerStore.resetTimer();
+
+      // Initialize core game settings
+      await coreStore.initializeGame(options);
+
+      // Load CS2 data - simple like weapon.vue
+      const difficulty = coreStore.difficulty;
+      await initializeData(100); // Load 100 items like analysis suggests
+
+      // Generate cards with Pinia store
+      await cardsStore.generateCards(difficulty, coreStore.seed);
+
+      // Clear any existing save data for fresh start
+      await deleteGameState();
+      state.value.hasUnfinishedGame = false;
+
+      console.log(
+        `🎮 Game initialized: ${difficulty.name} mode with ${cardsStore.cards.length} cards`
+      );
+    } catch (error) {
+      console.error("Failed to initialize game:", error);
+      toast.add({
+        severity: "error",
+        summary: "Initialization Failed",
+        detail: "Could not load game data",
+        life: 5000,
+      });
+      throw error;
+    } finally {
+      state.value.isLoading = false;
+    }
+  };
+
+  // Game actions - Simplified
+  const startNewGame = async (options: Partial<GameOptions> = {}) => {
+    await initializeGame(options);
+    coreStore.startGame();
+    timerStore.startTimer();
+
+    // Perform initial auto-save
+    await autoSaveGameState();
+
+    console.log("🕐 Timer started, isRunning:", timerStore.isRunning);
+  };
+
+  const pauseGame = async () => {
+    coreStore.pauseGame();
+    timerStore.pauseTimer();
+
+    // Auto-save when pausing
+    await autoSaveGameState();
+  };
+
+  const resumeGame = async () => {
+    coreStore.resumeGame();
+    timerStore.startTimer();
+
+    // Auto-save when resuming
+    await autoSaveGameState();
+  };
+
+  const playAgain = async () => {
+    const currentDifficulty = coreStore.difficulty.name;
+    await startNewGame({ difficulty: currentDifficulty });
+  };
+
+  const restartGame = async () => {
+    const currentOptions = {
+      difficulty: coreStore.difficulty.name,
+      seed: coreStore.seed,
+    };
     await startNewGame(currentOptions);
   };
 
-  const continueSavedGame = async (): Promise<boolean> => {
+  // Canvas management
+  const handleCanvasReady = () => {
+    console.log("✅ Game canvas ready");
+    state.value.showFallbackUI = false;
+  };
+
+  const handleCanvasError = (error?: string) => {
+    console.error("❌ Canvas error:", error);
+    state.value.showFallbackUI = true;
+    toast.add({
+      severity: "warn",
+      summary: "Rendering Issue",
+      detail: "Switched to fallback interface",
+      life: 3000,
+    });
+  };
+
+  // Enhanced card interaction with auto-save
+  const handleCardClick = async (cardId: string) => {
+    if (gameStatus.value !== "playing") return;
+    console.log(`🎯 Card clicked: ${cardId}`);
+
+    // Auto-save after each move (with debouncing)
+    setTimeout(async () => {
+      await autoSaveGameState();
+    }, 500);
+  };
+
+  // Game sharing
+  const shareGame = async () => {
     try {
-      if (!canContinueSavedGame.value) {
-        throw new Error("No saved game available to continue");
-      }
-
-      // Load the saved game state
-      const savedGameState = await persistence.loadGameState();
-      if (!savedGameState) {
-        throw new Error("Saved game state not found");
-      }
-
-      // If the saved game was in playing state, resume it
-      if (savedGameState.isPlaying) {
-        game.resumeGame();
-      } else {
-        // If it was paused, just start the game
-        game.startGame();
-      }
-
-      return true;
+      const shareUrl = `${window.location.origin}${window.location.pathname}?seed=${coreStore.seed}&difficulty=${coreStore.difficulty.name}`;
+      await navigator.clipboard.writeText(shareUrl);
+      toast.add({
+        severity: "success",
+        summary: "Shared!",
+        detail: "Game URL copied to clipboard",
+        life: 3000,
+      });
     } catch (error) {
-      console.error("Failed to continue saved game:", error);
-      return false;
+      console.error("Failed to share game:", error);
+      toast.add({
+        severity: "error",
+        summary: "Share Failed",
+        detail: "Could not copy URL to clipboard",
+        life: 3000,
+      });
     }
   };
 
-  const newGameWithSeed = async (
-    seed: string,
-    difficulty?: GameOptions["difficulty"]
-  ): Promise<boolean> => {
-    try {
-      const options: GameOptions = {
-        difficulty: difficulty || "easy",
-        seed,
-        enableSound: true,
-        enableParallax: true,
-      };
+  // Dialog management
+  const openDialog = (dialogName: "newGame" | "settings") => {
+    uiStore.openDialog(dialogName);
+  };
 
+  const closeDialog = (dialogName: "newGame" | "settings") => {
+    uiStore.closeDialog(dialogName);
+  };
+
+  // Settings handler
+  const handleSettingsApply = async (settings: {
+    difficulty: "easy" | "medium" | "hard";
+    seed?: string;
+    enableSound: boolean;
+    enableParallax: boolean;
+  }) => {
+    try {
+      uiStore.updateUIOption("enableSound", settings.enableSound);
+      uiStore.updateUIOption("enableParallax", settings.enableParallax);
+
+      await startNewGame({
+        difficulty: settings.difficulty,
+        seed: settings.seed,
+        enableSound: settings.enableSound,
+        enableParallax: settings.enableParallax,
+      });
+
+      closeDialog("settings");
+      toast.add({
+        severity: "success",
+        summary: "Settings Applied",
+        detail: "New game started with updated settings",
+        life: 3000,
+      });
+    } catch (error) {
+      console.error("Failed to apply settings:", error);
+      toast.add({
+        severity: "error",
+        summary: "Error",
+        detail: "Failed to apply settings",
+        life: 3000,
+      });
+    }
+  };
+
+  // New game handler
+  const handleNewGameStart = async (options: {
+    difficulty: "easy" | "medium" | "hard";
+    seed?: string;
+  }) => {
+    try {
       await startNewGame(options);
-      return true;
+      closeDialog("newGame");
+      toast.add({
+        severity: "success",
+        summary: "New Game Started",
+        detail: `Started ${options.difficulty} difficulty game`,
+        life: 3000,
+      });
     } catch (error) {
-      console.error("Failed to start new game with seed:", error);
-      return false;
+      console.error("Failed to start new game:", error);
+      toast.add({
+        severity: "error",
+        summary: "Error",
+        detail: "Failed to start new game",
+        life: 3000,
+      });
     }
   };
 
-  const shareCurrentGame = (): string => {
-    if (!seedSystem.canShareSeed.value) {
-      throw new Error("Current seed cannot be shared");
-    }
-    return seedSystem.generateShareUrl();
-  };
-
-  const clearAllData = async (): Promise<boolean> => {
+  // Seed history management
+  const loadSeedHistory = async () => {
     try {
-      await persistence.clearAllData();
-      cs2Data.clearCache();
-      seedSystem.clearHistory();
-      state.value.hasUnsavedChanges = false;
-      state.value.lastAutoSave = null;
-      return true;
+      const history = await loadGameHistory();
+      state.value.seedHistory = [
+        ...new Set(history.map((h: GameResult) => h.seed).filter(Boolean)),
+      ].slice(0, 10); // Last 10 unique seeds
     } catch (error) {
-      console.error("Failed to clear all data:", error);
-      return false;
+      console.error("Failed to load seed history:", error);
+      state.value.seedHistory = [];
     }
   };
 
-  // Helper functions
-  const getDifficultyItemCount = (
-    difficulty: GameOptions["difficulty"]
-  ): number => {
-    switch (difficulty) {
-      case "easy":
-        return 6; // 12 cards / 2 (pairs)
-      case "medium":
-        return 12; // 24 cards / 2 (pairs)
-      case "hard":
-        return 24; // 48 cards / 2 (pairs)
-      default:
-        return 6;
+  // Enhanced initialization with unfinished game check
+  const initialize = async () => {
+    await nextTick();
+    await loadSeedHistory();
+    await checkForUnfinishedGame();
+
+    // Don't auto-start game, let user decide
+    if (state.value.hasUnfinishedGame) {
+      console.log("🎮 Found unfinished game - user can choose to resume");
     }
   };
 
-  // Auto-save watcher
-  watch(shouldAutoSave, async (should) => {
-    if (should) {
-      const timeSinceLastSave = state.value.lastAutoSave
-        ? Date.now() - state.value.lastAutoSave
-        : Infinity;
+  // Setup watchers with auto-save integration
+  const setupWatchers = () => {
+    // Watch for game completion
+    watch(
+      () => coreStore.isGameComplete,
+      async (isComplete) => {
+        if (isComplete) {
+          const score = coreStore.currentScore;
+          const timeElapsed = coreStore.stats.timeElapsed;
+          const moves = coreStore.stats.moves;
 
-      // Auto-save every 30 seconds during gameplay
-      if (timeSinceLastSave > 30000) {
-        await saveGame();
-      }
-    }
-  });
+          const minutes = Math.floor(timeElapsed / 60);
+          const seconds = Math.floor(timeElapsed % 60);
+          const formattedTime = `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 
-  // Watch for game state changes to mark as unsaved
-  watch(
-    [
-      () => game.stats.value.moves,
-      () => game.selectedCards.value.length,
-      () => game.stats.value.matchesFound,
-    ],
-    () => {
-      if (game.isPlaying.value) {
-        state.value.hasUnsavedChanges = true;
-      }
-    }
-  );
+          toast.add({
+            severity: "success",
+            summary: "🎉 Congratulations!",
+            detail: `Game completed in ${formattedTime} with ${moves} moves. Score: ${score.toLocaleString()}`,
+            life: 5000,
+          });
 
-  // Watch for game completion
-  watch(
-    () => game.isGameComplete.value,
-    async (isComplete) => {
-      if (isComplete) {
-        await nextTick();
-        await completeGame();
+          timerStore.stopTimer();
+
+          // Clear saved game state on completion
+          await deleteGameState();
+          state.value.hasUnfinishedGame = false;
+        }
       }
-    }
-  );
+    );
+
+    // Sync timer store with core store stats
+    watch(
+      () => timerStore.timeElapsed,
+      (newTimeElapsed) => {
+        coreStore.updateTimeElapsed(newTimeElapsed);
+      }
+    );
+
+    // Auto-save on significant game state changes
+    watch(
+      () => [coreStore.stats.moves, cardsStore.matchedCards.length],
+      async () => {
+        if (coreStore.isPlaying) {
+          await autoSaveGameState();
+        }
+      },
+      { deep: true }
+    );
+
+    // Auto-save periodically during active gameplay (every 30 seconds)
+    watch(
+      () => timerStore.isRunning,
+      (isRunning) => {
+        if (isRunning) {
+          const interval = setInterval(async () => {
+            if (timerStore.isRunning && coreStore.isPlaying) {
+              await autoSaveGameState();
+            } else {
+              clearInterval(interval);
+            }
+          }, 30000); // 30 seconds
+        }
+      }
+    );
+  };
 
   return {
     // State
-    state: readonly(state),
+    state,
 
     // Computed
-    isReady,
-    gameProgress,
     gameStatus,
-    shouldAutoSave,
-    canContinueSavedGame,
+    gameProgress,
+    canShare,
+    isGameReady,
+    difficulties,
+    canResumeGame,
 
-    // Game state from orchestrated systems
-    game,
-    cs2Data,
-    seedSystem,
-    persistence,
+    // Store references
+    uiStore,
+    coreStore,
+    cardsStore,
+    timerStore,
 
-    // Actions
+    // Game actions
     initializeGame,
     startNewGame,
-    restoreGameState,
-    saveGame,
-    completeGame,
+    pauseGame,
+    resumeGame,
+    playAgain,
     restartGame,
-    continueSavedGame,
-    newGameWithSeed,
-    shareCurrentGame,
-    clearAllData,
 
-    // Helpers
-    getDifficultyItemCount,
+    // US-013 - Resume interrupted game functionality
+    restoreGameState,
+    resumeUnfinishedGame,
+    clearUnfinishedGame,
+    autoSaveGameState,
+
+    // Canvas management
+    handleCanvasReady,
+    handleCanvasError,
+    handleCardClick,
+
+    // Sharing
+    shareGame,
+
+    // Dialog management
+    openDialog,
+    closeDialog,
+
+    // Dialog handlers
+    handleSettingsApply,
+    handleNewGameStart,
+
+    // Utilities
+    seedValidator,
+    loadSeedHistory,
+    initialize,
+    setupWatchers,
   };
 };
