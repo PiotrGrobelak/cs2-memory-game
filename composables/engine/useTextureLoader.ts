@@ -3,14 +3,10 @@ import { Assets } from "pixi.js";
 import type { GameCard } from "~/types/game";
 
 export const useTextureLoader = () => {
-  // Use unknown type to avoid PixiJS typing issues while maintaining type safety
   const textureCache = ref<Map<string, unknown>>(new Map());
   const isLoading = ref(false);
   const loadingProgress = ref({ loaded: 0, total: 0 });
 
-  /**
-   * Extract unique image URLs from cards
-   */
   const extractImageUrls = (cards: GameCard[]): string[] => {
     const uniqueUrls = new Set<string>();
     cards.forEach((card) => {
@@ -21,9 +17,6 @@ export const useTextureLoader = () => {
     return Array.from(uniqueUrls);
   };
 
-  /**
-   * Preload card textures with progress tracking
-   */
   const preloadCardTextures = async (
     cards: GameCard[],
     onProgress?: (loaded: number, total: number) => void
@@ -33,12 +26,9 @@ export const useTextureLoader = () => {
     const imageUrls = extractImageUrls(cards);
 
     if (imageUrls.length === 0) {
-      console.log("No images to preload");
       onProgress?.(0, 0);
       return;
     }
-
-    console.log("📦 Preloading", imageUrls.length, "unique textures");
 
     isLoading.value = true;
     loadingProgress.value = { loaded: 0, total: imageUrls.length };
@@ -46,10 +36,8 @@ export const useTextureLoader = () => {
 
     let loadedCount = 0;
 
-    // Load textures using PixiJS Assets.load
     const loadPromises = imageUrls.map(async (imageUrl) => {
       try {
-        // Skip if already cached
         if (textureCache.value.has(imageUrl)) {
           loadedCount++;
           loadingProgress.value = {
@@ -60,12 +48,10 @@ export const useTextureLoader = () => {
           return;
         }
 
-        // Use PixiJS Assets.load to load the texture directly
         const texture = await Assets.load(imageUrl);
 
         if (texture) {
           textureCache.value.set(imageUrl, texture);
-          console.log("✅ Preloaded texture:", imageUrl);
         }
 
         loadedCount++;
@@ -82,11 +68,9 @@ export const useTextureLoader = () => {
           total: imageUrls.length,
         };
         onProgress?.(loadedCount, imageUrls.length);
-        // Don't throw here - we want to continue loading other images
       }
     });
 
-    // Wait for all textures to load (or fail)
     await Promise.allSettled(loadPromises);
 
     isLoading.value = false;
@@ -96,30 +80,19 @@ export const useTextureLoader = () => {
     );
   };
 
-  /**
-   * Get texture from cache
-   */
   const getTexture = (imageUrl: string) => {
     return textureCache.value.get(imageUrl);
   };
 
-  /**
-   * Check if texture is cached
-   */
   const hasTexture = (imageUrl: string): boolean => {
     return textureCache.value.has(imageUrl);
   };
 
-  /**
-   * Clear texture cache
-   */
   const clearTextureCache = (): void => {
     console.log("🧹 Clearing texture cache");
 
-    // Destroy textures to free memory
     textureCache.value.forEach((texture, url) => {
       try {
-        // Type guard to check if texture has destroy method
         if (
           texture &&
           typeof texture === "object" &&
@@ -142,9 +115,6 @@ export const useTextureLoader = () => {
     textureCache.value.clear();
   };
 
-  /**
-   * Get loading statistics
-   */
   const getLoadingStats = () => {
     return {
       isLoading: isLoading.value,

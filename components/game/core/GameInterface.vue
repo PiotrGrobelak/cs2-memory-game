@@ -22,7 +22,7 @@
 
     <div
       ref="controlButtonsRowRef"
-      class="flex flex-row gap-4 md:gap-6 lg:gap-8 justify-between items-start h-24 md:h-28 lg:h-32 md:my-2 lg:my-3"
+      class="flex flex-row gap-4 md:gap-6 lg:gap-8 justify-between items-start h-24 md:h-auto md:my-2 lg:my-3"
     >
       <GameControlButtons
         :can-resume-game="canResumeGame"
@@ -35,14 +35,15 @@
         @show-new-game-dialog="uiStore.openDialog('newGame')"
         @clear-unfinished-game="clearUnfinishedGame"
       />
-      <UnfinishedGameBanner v-if="canResumeGame" />
+      <UnfinishedGameBanner v-show="canResumeGame" />
     </div>
 
     <!-- Game Canvas Container -->
-    <div class="flex-1 min-h-0">
+    <div class="flex-1 min-h-0 w-full flex justify-center">
       <CanvasContainer
+        :key="canvasKey"
         :show-fallback="state.showFallbackUI"
-        :is-loading="state.isLoading"
+        :is-game-loading="state.isLoading"
         :cards="cardsStore.cards"
         :game-status="gameStatus"
         :selected-cards="cardsStore.selectedCardsData"
@@ -53,7 +54,6 @@
         @card-clicked="handleCardClick"
         @canvas-ready="enhancedHandleCanvasReady"
         @canvas-error="handleCanvasError"
-        @loading-state-changed="handleLoadingStateChanged"
       />
     </div>
 
@@ -77,8 +77,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, watch, unref, computed, useTemplateRef } from "vue";
-import { useElementSize } from "@vueuse/core";
+import { onMounted, computed, useTemplateRef, nextTick, ref, watch } from "vue";
+import { useElementSize, useDebounceFn, useWindowSize } from "@vueuse/core";
 
 import GameHeader from "../ui/header/GameHeader.vue";
 import GameStatusBar from "../ui/status/GameStatusBar.vue";
@@ -92,42 +92,39 @@ import CanvasContainer from "./CanvasContainer.vue";
 import { useDeviceDetection } from "~/composables/device/useDeviceDetection";
 import { useGameController } from "~/composables/core/useGameController";
 
-// Template refs for measuring component heights
 const gameHeaderRef = useTemplateRef<HTMLElement>("gameHeaderRef");
 const statusBarRowRef = useTemplateRef<HTMLElement>("statusBarRowRef");
 const controlButtonsRowRef = useTemplateRef<HTMLElement>(
   "controlButtonsRowRef"
 );
 
-// Use VueUse to track component heights
+const canvasRemountTrigger = ref("");
+
 const { height: headerHeight } = useElementSize(gameHeaderRef);
 const { height: statusBarHeight } = useElementSize(statusBarRowRef);
 const { height: controlButtonsHeight } = useElementSize(controlButtonsRowRef);
+const { width: windowWidth, height: windowHeight } = useWindowSize();
 
-// Calculate total height of components above canvas
 const topComponentsHeight = computed(() => {
-  const total =
-    headerHeight.value + statusBarHeight.value + controlButtonsHeight.value;
-
-  if (process.env.NODE_ENV === "development") {
-    console.log("📏 Top Components Heights:", {
-      header: headerHeight.value,
-      statusBar: statusBarHeight.value,
-      controlButtons: controlButtonsHeight.value,
-      total: total,
-    });
-  }
-
-  return total;
+  return (
+    headerHeight.value + statusBarHeight.value + controlButtonsHeight.value
+  );
 });
 
-// Composables
+const updateCanvasKey = useDebounceFn(() => {
+  canvasRemountTrigger.value = `${Date.now()}-${windowWidth.value}-${windowHeight.value}`;
+}, 500);
+
+watch([windowWidth, windowHeight], updateCanvasKey);
+
+const canvasKey = computed(() => {
+  return `canvas-${canvasRemountTrigger.value}`;
+});
+
 const deviceDetection = useDeviceDetection();
 
-// Game controller - All game logic is now orchestrated here
 const gameController = useGameController();
 
-// Destructure everything we need from the controller
 const {
   state,
   gameStatus,
@@ -154,38 +151,12 @@ const {
   seedValidator,
 } = gameController;
 
-// Canvas event handlers
-const handleLoadingStateChanged = (loading: boolean) => {
-  console.log("Canvas loading state:", loading);
-};
-
-// Enhanced canvas ready handler for resumed games
 const enhancedHandleCanvasReady = () => {
-  console.log("🎯 Canvas ready - ensuring proper rendering for resumed game");
   handleCanvasReady();
 };
 
-// Initialize on mount
 onMounted(async () => {
-  // Setup the game controller
   gameController.setupWatchers();
   await gameController.initialize();
 });
-
-// Debug: Watch game state in GameInterface
-if (process.env.NODE_ENV === "development") {
-  watch(
-    [() => cardsStore.cards.length, gameStatus, canResumeGame],
-    ([cardCount, status, canResume]) => {
-      console.log("🎯 GameInterface - State:", {
-        cardCount,
-        gameStatus: unref(status),
-        canResumeGame: unref(canResume),
-        hasUnfinishedGame: state.value.hasUnfinishedGame,
-        isLoading: state.value.isLoading,
-      });
-    },
-    { immediate: true }
-  );
-}
 </script>

@@ -106,25 +106,47 @@ const calculateMemoryGameLayout = (
 ) => {
   const grid = findOptimalGrid(cardCount, config);
 
-  // Dynamic margin and gap adjustment based on card count
+  // Dynamic margin and gap adjustment based on card count and screen orientation
   const getDynamicSpacing = () => {
+    // Detect landscape orientation for tablets/mobile
+    const isLandscape = screenWidth > screenHeight;
+    const aspectRatio = screenWidth / screenHeight;
+
+    // Reduce margins significantly for landscape tablets to maximize card space
+    const marginMultiplier = isLandscape && aspectRatio > 1.3 ? 0.4 : 1.0;
+
     if (cardCount <= 12) {
       // For few cards, use smaller margins to allow larger cards
-      return { margin: config.margin * 0.7, gap: config.cardGap * 1.5 };
+      return {
+        margin: config.margin * 0.5 * marginMultiplier,
+        gap: config.cardGap * 1.2,
+      };
     }
     if (cardCount <= 24) {
-      return { margin: config.margin, gap: config.cardGap };
+      return {
+        margin: config.margin * 0.8 * marginMultiplier,
+        gap: config.cardGap * 0.9,
+      };
     }
     if (cardCount <= 36) {
       // Reduce gaps for medium-high card counts
-      return { margin: config.margin * 1.1, gap: config.cardGap * 0.7 };
+      return {
+        margin: config.margin * 0.9 * marginMultiplier,
+        gap: config.cardGap * 0.6,
+      };
     }
     if (cardCount <= 48) {
-      // Increase gaps for 48 cards to improve visual separation
-      return { margin: config.margin * 1.2, gap: config.cardGap * 1.0 };
+      // Minimal margins for high card counts
+      return {
+        margin: config.margin * 1.0 * marginMultiplier,
+        gap: config.cardGap * 0.8,
+      };
     }
-    // For very many cards, minimal gaps
-    return { margin: config.margin * 1.5, gap: config.cardGap * 0.4 };
+    // For very many cards, minimal gaps and margins
+    return {
+      margin: config.margin * 1.2 * marginMultiplier,
+      gap: config.cardGap * 0.3,
+    };
   };
 
   const spacing = getDynamicSpacing();
@@ -181,11 +203,14 @@ const calculateMemoryGameLayout = (
   const totalHeight =
     cardHeight * grid.rows + totalGapHeight + 2 * spacing.margin;
 
-  // Scale down if exceeding screen bounds - be more aggressive
+  // Scale down if exceeding screen bounds - be more aggressive for landscape
   if (totalWidth > screenWidth || totalHeight > screenHeight) {
     const scaleX = screenWidth / totalWidth;
     const scaleY = screenHeight / totalHeight;
-    const scale = Math.min(scaleX, scaleY) * 0.95; // Add 5% safety margin
+    // Use more aggressive scaling for landscape tablets
+    const isLandscape = screenWidth > screenHeight;
+    const safetyMargin = isLandscape ? 0.92 : 0.95; // Less safety margin in landscape
+    const scale = Math.min(scaleX, scaleY) * safetyMargin;
 
     cardWidth *= scale;
     cardHeight *= scale;
@@ -198,7 +223,9 @@ const calculateMemoryGameLayout = (
 
     // If still doesn't fit, reduce gap size and try again
     if (newTotalWidth > screenWidth || newTotalHeight > screenHeight) {
-      spacing.gap = Math.max(spacing.gap * 0.5, 2); // Minimum 2px gap
+      console.log("⚠️ Still doesn't fit after scaling, reducing gaps...");
+
+      spacing.gap = Math.max(spacing.gap * 0.5, 1); // Minimum 1px gap for tight layouts
       const finalTotalGapWidth = (grid.cols - 1) * spacing.gap;
       const finalTotalGapHeight = (grid.rows - 1) * spacing.gap;
 
@@ -212,11 +239,22 @@ const calculateMemoryGameLayout = (
       const finalMaxCardHeight = finalCardAreaHeight / grid.rows;
 
       if (finalMaxCardWidth / finalMaxCardHeight > 3 / 4) {
-        cardHeight = finalMaxCardHeight * 0.95; // Safety margin
+        cardHeight = finalMaxCardHeight * 0.98; // Tighter safety margin
         cardWidth = cardHeight * (3 / 4);
       } else {
-        cardWidth = finalMaxCardWidth * 0.95; // Safety margin
+        cardWidth = finalMaxCardWidth * 0.98; // Tighter safety margin
         cardHeight = cardWidth * (4 / 3);
+      }
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("🔧 After gap reduction:", {
+          reducedGap: spacing.gap,
+          finalCardSize: { width: cardWidth, height: cardHeight },
+          finalTotalSize: {
+            width: cardWidth * grid.cols + finalTotalGapWidth,
+            height: cardHeight * grid.rows + finalTotalGapHeight,
+          },
+        });
       }
     }
   }
@@ -225,7 +263,7 @@ const calculateMemoryGameLayout = (
   const finalTotalGapWidth = (grid.cols - 1) * spacing.gap;
   const finalTotalGapHeight = (grid.rows - 1) * spacing.gap;
 
-  return {
+  const result = {
     rows: grid.rows,
     cols: grid.cols,
     cardWidth: Math.floor(cardWidth),
@@ -234,6 +272,35 @@ const calculateMemoryGameLayout = (
     totalHeight: Math.floor(cardHeight * grid.rows + finalTotalGapHeight),
     gap: spacing.gap,
   };
+
+  // Final debug logging
+  if (process.env.NODE_ENV === "development") {
+    console.log("✅ Final layout result:", {
+      screenSize: { width: screenWidth, height: screenHeight },
+      gridLayout: `${result.rows}x${result.cols}`,
+      cardSize: { width: result.cardWidth, height: result.cardHeight },
+      gridTotalSize: { width: result.totalWidth, height: result.totalHeight },
+      marginsUsed: {
+        horizontal: spacing.margin * 2,
+        vertical: spacing.margin * 2,
+      },
+      spacing: result.gap,
+      utilization: {
+        width:
+          (
+            ((result.totalWidth + 2 * spacing.margin) / screenWidth) *
+            100
+          ).toFixed(1) + "%",
+        height:
+          (
+            ((result.totalHeight + 2 * spacing.margin) / screenHeight) *
+            100
+          ).toFixed(1) + "%",
+      },
+    });
+  }
+
+  return result;
 };
 
 const DEFAULT_CONFIG: AdaptiveGridConfig = {

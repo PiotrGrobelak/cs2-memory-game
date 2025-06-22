@@ -1,7 +1,7 @@
 <template>
   <div
-    ref="canvasWrapperRef"
-    class="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-lg shadow-inner h-full w-full flex items-center justify-center min-h-0"
+    ref="canvasContainerRef"
+    class="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-lg shadow-inner h-full w-full xl:w-1/2 flex items-center justify-center min-h-0"
     :data-device="deviceType"
     data-size="canvas-container"
   >
@@ -14,9 +14,9 @@
         :game-status="gameStatus"
         :is-interactive="gameStatus === 'playing'"
         :selected-cards="selectedCards"
-        :device-type="responsiveCanvas.deviceInfo.value.type"
-        :is-resizing="responsiveCanvas.isResizing.value"
-        :is-orientation-loading="responsiveCanvas.isLoading.value"
+        :device-type="deviceInfo.type"
+        :is-resizing="isResizing"
+        :is-orientation-loading="isLoading"
         @card-clicked="$emit('card-clicked', $event)"
         @canvas-ready="handleCanvasReady"
         @canvas-error="handleCanvasError"
@@ -39,21 +39,20 @@ import FallbackCardGrid from "./FallbackCardGrid.vue";
 import GameLoadingState from "./GameLoadingState.vue";
 import GameEmptyState from "./GameEmptyState.vue";
 import type { GameCard, DifficultyLevel } from "~/types/game";
-import { useResponsiveCanvas } from "~/composables/engine/useResponsiveCanvas";
-import { useAdaptiveGrid } from "~/composables/engine/useAdaptiveGrid";
+import { useResponsiveCanvas } from "~/composables/engine/useResponsiveCanvas/useResponsiveCanvas";
 
 type GameStatus = "initializing" | "ready" | "playing" | "paused" | "completed";
 
 interface Props {
   showFallback: boolean;
-  isLoading: boolean;
+  isGameLoading: boolean;
   cards: GameCard[];
   gameStatus: GameStatus;
   selectedCards: GameCard[];
   selectedCardsIds: string[];
   deviceType: string;
   difficulty: DifficultyLevel | null;
-  topComponentsHeight?: number;
+  topComponentsHeight: number;
 }
 
 interface Emits {
@@ -65,106 +64,39 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const canvasWrapperRef = useTemplateRef<HTMLDivElement>("canvasWrapperRef");
+const canvasContainerRef = useTemplateRef<HTMLDivElement>("canvasContainerRef");
 
-// Add internal ready state to ensure proper canvas initialization order
 const isCanvasInitialized = ref(false);
 const isComponentMounted = ref(false);
-// Keep isCanvasReady for debugging and emit purposes only
 const isCanvasReady = ref(false);
 
-// Responsive canvas system with better space utilization
-const responsiveCanvas = useResponsiveCanvas(canvasWrapperRef, {
-  minWidth: 480, // Better minimum for desktop layouts
-  minHeight: 360, // Better minimum height, maintaining 4:3 aspect
-  padding: 20, // Small padding for better visual spacing
+const {
+  isResizing,
+  isLoading,
+  canvasWidth,
+  canvasHeight,
+  deviceInfo,
+  topComponentsHeight: topHeight,
+  containerHeight,
+  containerWidth,
+} = useResponsiveCanvas({
+  minWidth: 480,
+  minHeight: 360,
+  padding: 20,
   resizeThrottleMs: 100,
-  // Don't force aspect ratio - let the grid algorithm handle it
-  // aspectRatio: 1.33, // 4:3 aspect ratio (width/height)
-  topComponentsHeight: () => props.topComponentsHeight || 0,
-});
-
-// Card size configuration for different device types and card counts
-const CARD_SIZE_CONFIG = {
-  mobile: {
-    min: { small: 70, medium: 55, large: 42, xlarge: 35 },
-    max: { small: 140, medium: 110, large: 85, xlarge: 70 },
-  },
-  tablet: {
-    min: { small: 80, medium: 60, large: 45, xlarge: 35, xxlarge: 30 },
-    max: { small: 160, medium: 120, large: 90, xlarge: 70, xxlarge: 60 },
-  },
-  desktop: {
-    min: { small: 90, medium: 80, large: 70, xlarge: 60 },
-    max: { small: 220, medium: 180, large: 140, xlarge: 120 },
-  },
-} as const;
-
-// Spacing configuration for different scenarios
-const SPACING_CONFIG = {
-  mobile: { small: 10, medium: 8, large: 6, cards48: 6, xlarge: 4 },
-  tablet: { small: 12, medium: 8, large: 6, cards48: 6, xlarge: 4, xxlarge: 3 },
-  desktop: { small: 12, medium: 10, large: 8, cards48: 12, xlarge: 8 },
-} as const;
-
-// Helper functions to get card sizes and spacing based on device and card count
-const getCardSize = (
-  deviceType: keyof typeof CARD_SIZE_CONFIG,
-  cardCount: number,
-  type: "min" | "max"
-) => {
-  const config = CARD_SIZE_CONFIG[deviceType][type];
-
-  if (cardCount <= 12) return config.small;
-  if (cardCount <= 24) return config.medium;
-  if (cardCount <= 36) return config.large;
-  if (cardCount <= 48) return config.xlarge;
-  return "xxlarge" in config ? config.xxlarge : config.xlarge;
-};
-
-const getSpacing = (
-  deviceType: keyof typeof SPACING_CONFIG,
-  cardCount: number
-) => {
-  const config = SPACING_CONFIG[deviceType];
-
-  if (cardCount <= 12) return config.small;
-  if (cardCount <= 24) return config.medium;
-  if (cardCount <= 36) return config.large;
-  if (cardCount === 48) return config.cards48; // Special case for 48 cards
-  if (cardCount <= 48) return config.xlarge;
-  return "xxlarge" in config ? config.xxlarge : config.xlarge;
-};
-
-// Adaptive grid system that responds to device type changes
-const adaptiveGrid = computed(() => {
-  const currentDeviceType = responsiveCanvas.deviceInfo.value
-    .type as keyof typeof CARD_SIZE_CONFIG;
-  const cardCount = props.cards.length;
-
-  return useAdaptiveGrid({
-    minCardSize: getCardSize(currentDeviceType, cardCount, "min"),
-    maxCardSize: getCardSize(currentDeviceType, cardCount, "max"),
-    aspectRatio: 0.75,
-    spacing: getSpacing(currentDeviceType, cardCount),
-    paddingRatio: 0.015,
-  });
 });
 
 const hasCards = computed(() => props.cards.length > 0);
 
-// Enhanced canvas dimensions with responsive behavior
 const canvasDimensions = computed(() => {
   const dimensions = {
-    width: responsiveCanvas.canvasWidth.value,
-    height: responsiveCanvas.canvasHeight.value,
+    width: canvasWidth.value,
+    height: canvasHeight.value,
   };
 
   return dimensions;
 });
 
-// Simplified canvas showing logic - only check basic conditions
-// Canvas will handle its own internal loading states
 const shouldShowCanvas = computed(() => {
   const hasValidDimensions =
     canvasDimensions.value.width > 0 && canvasDimensions.value.height > 0;
@@ -178,45 +110,23 @@ const shouldShowCanvas = computed(() => {
   );
 });
 
-// Ensure component is fully mounted before initializing canvas
 onMounted(async () => {
-  await nextTick(); // Wait for DOM to be fully updated
+  await nextTick();
   isComponentMounted.value = true;
-
-  if (process.env.NODE_ENV === "development") {
-    console.log(
-      "✅ CanvasContainer mounted and ready for canvas initialization"
-    );
-  }
 });
 
-// Grid layout information for debugging/optimization
-const gridLayout = computed(() => {
-  if (!hasCards.value) return null;
-
-  return adaptiveGrid.value.generateCardLayout(
-    props.cards,
-    canvasDimensions.value.width,
-    canvasDimensions.value.height,
-    responsiveCanvas.deviceInfo.value.type
-  );
-});
-
-// Loading state management
 const isCanvasLoading = computed(() => {
   return (
-    props.isLoading ||
-    responsiveCanvas.isLoading.value ||
-    responsiveCanvas.isResizing.value ||
+    props.isGameLoading ||
+    isLoading.value ||
+    isResizing.value ||
     !isCanvasInitialized.value
   );
 });
 
-// Handle canvas readiness
 const handleCanvasReady = () => {
   isCanvasReady.value = true;
   emit("canvas-ready");
-  console.log("✅ Canvas container ready - all dimensions and cards prepared");
 };
 
 const handleCanvasError = () => {
@@ -224,12 +134,27 @@ const handleCanvasError = () => {
   emit("canvas-error");
 };
 
+watch(
+  canvasContainerRef,
+  () => {
+    const { width, height } = useElementSize(canvasContainerRef);
+
+    containerHeight.value = height.value;
+    containerWidth.value = width.value;
+
+    console.log("🔧 containerHeight one:", containerHeight.value);
+    console.log("🔧 containerWidth  one:", containerWidth.value);
+  },
+  { once: true }
+);
+
 // Watch for canvas dimension changes and mark as initialized
 watch(
   [
     () => canvasDimensions.value.width,
     () => canvasDimensions.value.height,
     isComponentMounted,
+    () => props.topComponentsHeight,
   ],
   async () => {
     const hasValidDimensions =
@@ -276,43 +201,11 @@ watch(
   { immediate: true }
 );
 
-// Debug watcher
 watch(
-  [
-    shouldShowCanvas,
-    isCanvasLoading,
-    () => props.cards.length,
-    isComponentMounted,
-  ],
-  ([showCanvas, loading, cardCount, componentMounted]) => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("🎯 Canvas State:", {
-        shouldShowCanvas: showCanvas,
-        isCanvasLoading: loading,
-        cardCount,
-        dimensions: canvasDimensions.value,
-        isCanvasInitialized: isCanvasInitialized.value,
-        isComponentMounted: componentMounted,
-        isCanvasReady: isCanvasReady.value,
-        showFallback: props.showFallback,
-        isLoading: props.isLoading,
-      });
-    }
+  () => props.topComponentsHeight,
+  (newHeight) => {
+    topHeight.value = newHeight;
   },
   { immediate: true }
 );
-
-watch(gridLayout, (layout) => {
-  if (layout && process.env.NODE_ENV === "development") {
-    console.log("🎯 Grid Layout Updated:", {
-      dimensions: canvasDimensions.value,
-      grid: `${layout.rows}x${layout.cols}`,
-      cardSize: layout.cardDimensions,
-      deviceType: responsiveCanvas.deviceInfo.value.type,
-      shouldShowCanvas: shouldShowCanvas.value,
-      canvasInitialized: isCanvasInitialized.value,
-      canvasReady: isCanvasReady.value,
-    });
-  }
-});
 </script>
