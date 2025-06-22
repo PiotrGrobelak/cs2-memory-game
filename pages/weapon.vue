@@ -29,12 +29,12 @@
         </div>
       </div>
 
-      <!-- Single Canvas with 2x2 Grid of Weapons -->
+      <!-- Animated Canvas with Elastic Bounce Animation -->
       <div
         v-if="selectedWeapons.length > 0 && !isLoading && !error"
         class="h-full min-h-[600px]"
       >
-        <WeaponGrid
+        <WeaponGridAnimated
           ref="weaponGridRef"
           :weapons="selectedWeapons"
           :canvas-width="1200"
@@ -44,19 +44,45 @@
         />
       </div>
 
+      <!-- Control Buttons -->
       <div v-if="selectedWeapons.length > 0" class="mt-6 text-center space-x-4">
         <button
-          class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
           @click="loadRandomWeapons"
         >
-          Show 4 New Weapons
+          <i class="pi pi-refresh mr-2"></i>
+          Load New Weapons
         </button>
         <button
-          class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-lg"
           @click="resetGrid"
         >
-          Reset Green Tiles
+          <i class="pi pi-replay mr-2"></i>
+          Reset All Cards
         </button>
+      </div>
+
+      <!-- Animation Instructions -->
+      <div v-if="selectedWeapons.length > 0" class="mt-4 text-center">
+        <div
+          class="bg-gray-800 bg-opacity-80 text-white p-4 rounded-lg max-w-2xl mx-auto"
+        >
+          <h3 class="text-lg font-bold text-purple-400 mb-2">
+            🎯 Elastic Bounce Animation
+          </h3>
+          <p class="text-sm mb-2">
+            All cards now use the same beautiful elastic bounce effect!
+          </p>
+          <div class="bg-purple-500 bg-opacity-20 p-4 rounded text-center">
+            <span class="text-purple-400 font-bold text-lg"
+              >✨ Elastic Bounce Effect ✨</span
+            >
+            <p class="text-white text-sm mt-2">
+              Click any card to see the smooth bouncy animation with elastic
+              entrance
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -67,9 +93,16 @@ import { ref, onMounted } from "vue";
 import type { CS2Item } from "~/types/game";
 import { useCS2Data } from "~/composables/data/useCS2Data";
 
-// Set page title
+// Set page title and meta
 useHead({
-  title: "CS2 Weapon Display - Memory Game",
+  title: "CS2 Elastic Bounce Animation",
+  meta: [
+    {
+      name: "description",
+      content:
+        "Preview elastic bounce animation for card flips using Pixi.js - smooth and dynamic effects",
+    },
+  ],
 });
 
 // State
@@ -89,16 +122,19 @@ const loadRandomWeapons = async () => {
 
     // Initialize data if not already loaded
     if (!state.value.items.length) {
-      await initializeData(50); // Load 50 weapons
+      await initializeData(50); // Load 50 weapons for bounce animation
     }
 
-    // Get 4 random weapons
+    // Get 4 random weapons for bounce animation showcase
     const weapons = getItemsForGame(4, Math.random().toString());
     if (weapons.length > 0) {
       selectedWeapons.value = weapons;
-      console.log("Selected weapons:", selectedWeapons.value);
+      console.log(
+        "Selected weapons for bounce animation:",
+        selectedWeapons.value
+      );
     } else {
-      throw new Error("No weapons available");
+      throw new Error("No weapons available for bounce animation");
     }
   } catch (err) {
     const errorMessage =
@@ -111,16 +147,18 @@ const loadRandomWeapons = async () => {
 };
 
 const onCanvasReady = () => {
-  console.log("Weapon grid canvas is ready");
+  console.log("Animated weapon grid canvas is ready - bounce animation loaded");
 };
 
 const onCanvasError = (errorMessage: string) => {
   error.value = errorMessage;
+  console.error("Animation canvas error:", errorMessage);
 };
 
 const resetGrid = () => {
   if (weaponGridRef.value && weaponGridRef.value.resetTiles) {
     weaponGridRef.value.resetTiles();
+    console.log("All animated cards reset to initial state");
   }
 };
 
