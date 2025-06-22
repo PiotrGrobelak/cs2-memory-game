@@ -1,5 +1,7 @@
 <template>
-  <div class="w-full px-2 py-4 md:px-4 h-screen flex flex-col">
+  <div
+    class="w-full px-2 py-4 md:px-6 lg:px-8 md:py-6 lg:py-8 h-screen flex flex-col"
+  >
     <GameHeader
       ref="gameHeaderRef"
       :can-share="canShare"
@@ -8,7 +10,7 @@
     />
     <div
       ref="statusBarRowRef"
-      class="flex flex-row gap-4 justify-between items-center"
+      class="flex flex-row gap-4 md:gap-6 lg:gap-8 justify-between items-center md:my-2 lg:my-3"
     >
       <GameStatusBar
         :time-elapsed="coreStore.stats.timeElapsed"
@@ -20,7 +22,7 @@
 
     <div
       ref="controlButtonsRowRef"
-      class="flex flex-row gap-4 justify-between items-center h-24"
+      class="flex flex-row gap-4 md:gap-6 lg:gap-8 justify-between items-start h-24 md:h-28 lg:h-32 md:my-2 lg:my-3"
     >
       <GameControlButtons
         :can-resume-game="canResumeGame"
