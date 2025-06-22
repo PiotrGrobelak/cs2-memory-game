@@ -69,16 +69,23 @@ export const useDeviceDetection = () => {
   });
 
   // Device capabilities detection
-  const deviceCapabilities = computed(() => ({
-    isTouchDevice: mobileDetection.any || "ontouchstart" in window,
-    hasHover: !mobileDetection.any,
-    hasMouseSupport: !mobileDetection.any || "onmouseenter" in window,
-    prefersReducedMotion:
-      typeof window !== "undefined"
+  const deviceCapabilities = computed(() => {
+    const isBrowser = typeof window !== "undefined";
+
+    return {
+      isTouchDevice: isBrowser
+        ? mobileDetection.any || "ontouchstart" in window
+        : false,
+      hasHover: !mobileDetection.any,
+      hasMouseSupport: isBrowser
+        ? !mobileDetection.any || "onmouseenter" in window
+        : true,
+      prefersReducedMotion: isBrowser
         ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
         : false,
-    pixelRatio: typeof window !== "undefined" ? window.devicePixelRatio : 1,
-  }));
+      pixelRatio: isBrowser ? window.devicePixelRatio : 1,
+    };
+  });
 
   // Convenience computed refs for commonly used properties
   const isTouchDevice = computed(() => deviceCapabilities.value.isTouchDevice);

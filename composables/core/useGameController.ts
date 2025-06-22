@@ -206,6 +206,7 @@ export const useGameController = () => {
       const savedState = await loadGameState();
       if (!savedState) {
         console.log("🔄 No saved game state found");
+        state.value.isLoading = false;
         return false;
       }
 
@@ -228,7 +229,17 @@ export const useGameController = () => {
       coreStore.restoreStats(savedState.stats);
 
       // Restore cards state
+      console.log("🔄 Restoring cards...", {
+        savedCardsCount: savedState.cards?.length || 0,
+        currentCardsCount: cardsStore.cards.length,
+      });
+
       cardsStore.restoreState(savedState.cards);
+
+      console.log("🔄 Cards restored", {
+        restoredCardsCount: cardsStore.cards.length,
+        firstCard: cardsStore.cards[0]?.id || "none",
+      });
 
       // Restore timer state - critical for US-013
       timerStore.restoreTimer(savedState.stats.timeElapsed);
@@ -303,6 +314,12 @@ export const useGameController = () => {
 
     const success = await restoreGameState();
     if (success) {
+      // Wait for next tick to ensure proper DOM updates before canvas rendering
+      await nextTick();
+
+      // Give additional time for canvas dimensions to be calculated properly
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       // Clear the unfinished game flag after successful restoration
       state.value.hasUnfinishedGame = false;
 

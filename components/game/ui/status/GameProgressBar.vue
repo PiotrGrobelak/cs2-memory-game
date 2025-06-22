@@ -1,5 +1,5 @@
 <template>
-  <div class="mb-6 transition-all duration-200">
+  <div class="mb-6 transition-all duration-200 w-1/2">
     <div class="flex justify-between items-center mb-2">
       <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
         Progress
