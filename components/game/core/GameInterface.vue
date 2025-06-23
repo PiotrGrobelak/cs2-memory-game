@@ -77,12 +77,16 @@ import { useElementSize, useDebounceFn, useWindowSize } from "@vueuse/core";
 import GameHeader from "../ui/header/GameHeader.vue";
 import GameStatusBar from "../ui/status/GameStatusBar.vue";
 import GameControlButtons from "../ui/GameControlButtons.vue";
-import SettingsDialog from "../dialogs/SettingsDialog.vue";
-import NewGameDialog from "../dialogs/NewGameDialog.vue";
 import CanvasContainer from "./CanvasContainer.vue";
-
 import { useDeviceDetection } from "~/composables/device/useDeviceDetection";
 import { useGameController } from "~/composables/core/useGameController";
+
+const NewGameDialog = defineAsyncComponent(
+  () => import("../dialogs/NewGameDialog.vue")
+);
+const SettingsDialog = defineAsyncComponent(
+  () => import("../dialogs/SettingsDialog.vue")
+);
 
 const gameHeaderRef = useTemplateRef<HTMLElement>("gameHeaderRef");
 const gameControlsRowRef = useTemplateRef<HTMLElement>("gameControlsRowRef");

@@ -54,7 +54,7 @@ This plan focuses on building solid application foundations before adding advanc
 
 ### Step 6: Difficulty Levels ✅
 
-- ✅ Implementation of three difficulty levels (12, 24, 48 cards)
+- ✅ Implementation of three difficulty levels (12, 18, 24 cards)
 - ✅ Dynamic card layout on board
 - ✅ Layout adaptation for different card quantities
 

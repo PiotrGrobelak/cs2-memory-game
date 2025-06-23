@@ -146,13 +146,13 @@ export const useGameCoreStore = defineStore("game-core", () => {
       },
       medium: {
         name: "medium" as const,
-        cardCount: 24 as const,
-        gridSize: { rows: 4, cols: 6 },
+        cardCount: 18 as const,
+        gridSize: { rows: 3, cols: 6 },
       },
       hard: {
         name: "hard" as const,
-        cardCount: 48 as const,
-        gridSize: { rows: 6, cols: 8 },
+        cardCount: 24 as const,
+        gridSize: { rows: 4, cols: 6 },
       },
     };
     return configs[name];

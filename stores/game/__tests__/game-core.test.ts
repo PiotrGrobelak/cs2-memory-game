@@ -49,9 +49,9 @@ describe("Game Core Store", () => {
       await store.initializeGame(options);
 
       expect(store.difficulty.name).toBe("medium");
-      expect(store.difficulty.cardCount).toBe(24);
-      expect(store.difficulty.gridSize).toEqual({ rows: 4, cols: 6 });
-      expect(store.stats.totalPairs).toBe(12); // 24 cards = 12 pairs
+      expect(store.difficulty.cardCount).toBe(18);
+      expect(store.difficulty.gridSize).toEqual({ rows: 3, cols: 6 });
+      expect(store.stats.totalPairs).toBe(9); // 18 cards = 9 pairs
     });
 
     it("should initialize game with hard difficulty", async () => {
@@ -61,9 +61,9 @@ describe("Game Core Store", () => {
       await store.initializeGame(options);
 
       expect(store.difficulty.name).toBe("hard");
-      expect(store.difficulty.cardCount).toBe(48);
-      expect(store.difficulty.gridSize).toEqual({ rows: 6, cols: 8 });
-      expect(store.stats.totalPairs).toBe(24); // 48 cards = 24 pairs
+      expect(store.difficulty.cardCount).toBe(24);
+      expect(store.difficulty.gridSize).toEqual({ rows: 4, cols: 6 });
+      expect(store.stats.totalPairs).toBe(12); // 24 cards = 12 pairs
     });
 
     it("should use provided seed", async () => {
@@ -278,8 +278,8 @@ describe("Game Core Store", () => {
 
       const settings = store.difficultySettings;
       expect(settings.name).toBe("medium");
-      expect(settings.cardCount).toBe(24);
-      expect(settings.gridSize).toEqual({ rows: 4, cols: 6 });
+      expect(settings.cardCount).toBe(18);
+      expect(settings.gridSize).toEqual({ rows: 3, cols: 6 });
     });
   });
 
@@ -301,8 +301,8 @@ describe("Game Core Store", () => {
 
       expect(store.difficulty).toEqual({
         name: "medium",
-        cardCount: 24,
-        gridSize: { rows: 4, cols: 6 },
+        cardCount: 18,
+        gridSize: { rows: 3, cols: 6 },
       });
     });
 
@@ -312,8 +312,8 @@ describe("Game Core Store", () => {
 
       expect(store.difficulty).toEqual({
         name: "hard",
-        cardCount: 48,
-        gridSize: { rows: 6, cols: 8 },
+        cardCount: 24,
+        gridSize: { rows: 4, cols: 6 },
       });
     });
   });

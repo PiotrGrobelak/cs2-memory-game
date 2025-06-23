@@ -37,7 +37,7 @@ export interface GameCard {
 // Game Difficulty Settings
 export interface DifficultyLevel {
   name: "easy" | "medium" | "hard";
-  cardCount: 12 | 24 | 48;
+  cardCount: 12 | 18 | 24;
   gridSize: { rows: number; cols: number };
 }
 
@@ -81,6 +81,13 @@ export interface GameOptions {
   enableSound: boolean;
   enableParallax: boolean;
 }
+
+export type GameStatus =
+  | "initializing"
+  | "ready"
+  | "playing"
+  | "paused"
+  | "completed";
 
 // API Response Types
 export interface CS2ApiResponse {

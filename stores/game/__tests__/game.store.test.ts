@@ -77,8 +77,8 @@ describe("Game Composable", () => {
       await game.initializeNewGame(options);
 
       expect(game.difficulty.value.name).toBe("medium");
-      expect(game.cards.value).toHaveLength(24);
-      expect(game.stats.value.totalPairs).toBe(12);
+      expect(game.cards.value).toHaveLength(18);
+      expect(game.stats.value.totalPairs).toBe(9);
     });
 
     it("should use provided seed", async () => {

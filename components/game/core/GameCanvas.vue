@@ -2,7 +2,7 @@
   <div
     ref="canvasContainer"
     class="relative w-full h-full flex items-center justify-center rounded-xl overflow-hidden"
-    :class="[{ 'opacity-80': isLoading }]"
+    :class="[{ 'opacity-80': isLoading || isResizing }]"
   >
     <!-- Loading Overlay -->
     <div
@@ -11,14 +11,36 @@
     >
       <div class="text-white text-center">
         <i class="pi pi-spin pi-spinner text-4xl mb-4" />
-        <p>Loading game board...</p>
+        <p>Initializing optimized canvas...</p>
+      </div>
+    </div>
+
+    <!-- Resize Overlay -->
+    <div
+      v-if="isResizing && !isLoading"
+      class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center z-20 backdrop-blur-sm"
+    >
+      <div class="text-white text-center">
+        <i class="pi pi-spin pi-spinner text-3xl mb-2" />
+        <p class="text-sm font-medium">Optimizing layout...</p>
+      </div>
+    </div>
+
+    <!-- Orientation Change Overlay -->
+    <div
+      v-if="isOrientationChanging"
+      class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center z-25 backdrop-blur-sm"
+    >
+      <div class="text-white text-center">
+        <i class="pi pi-refresh text-3xl mb-2" />
+        <p class="text-sm font-medium">Adjusting to orientation...</p>
       </div>
     </div>
 
     <!-- Error Overlay -->
     <div
       v-if="error"
-      class="absolute inset-0 bg-red-500 bg-opacity-20 flex items-center justify-center z-10"
+      class="absolute inset-0 bg-red-500 bg-opacity-20 flex items-center justify-center z-30"
     >
       <div class="text-red-800 text-center bg-white p-4 rounded-lg">
         <i class="pi pi-exclamation-triangle text-2xl mb-2" />
@@ -32,62 +54,46 @@
       </div>
     </div>
 
-    <!-- Responsive Canvas Loading Overlay -->
+    <!-- Dev Debug Info -->
     <div
-      v-if="props.isResizing || props.isOrientationLoading"
-      class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center z-20 backdrop-blur-sm"
+      v-if="isDev && currentLayout"
+      class="absolute top-2 left-2 bg-black bg-opacity-80 text-white text-xs p-2 rounded z-40 opacity-64"
     >
-      <div class="text-white text-center">
-        <i class="pi pi-spin pi-spinner text-3xl mb-2" />
-        <p class="text-sm font-medium">
-          {{
-            props.isResizing
-              ? "Redrawing board..."
-              : props.isOrientationLoading
-                ? "Adjusting to orientation..."
-                : "Loading..."
-          }}
-        </p>
+      <div>Strategy: {{ getCurrentStrategy?.name || "Unknown" }}</div>
+      <div>Device: {{ deviceType }} {{ deviceOrientation }}</div>
+      <div>Canvas: {{ canvasWidth }}×{{ canvasHeight }}px</div>
+      <div>Grid: {{ currentLayout.cols }}×{{ currentLayout.rows }}</div>
+      <div>
+        Card: {{ currentLayout.cardDimensions.width }}×{{
+          currentLayout.cardDimensions.height
+        }}px
       </div>
+      <div>Efficiency: {{ Math.round(currentLayout.efficiency * 100) }}%</div>
+      <div>Cards: {{ cards.length }}</div>
     </div>
 
-    <!-- Canvas will be inserted here by PixiJS -->
+    <!-- Canvas will be inserted here by Pixi.js -->
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed } from "vue";
-import {
-  Application,
-  Graphics,
-  Sprite,
-  Container,
-  type Texture,
-} from "pixi.js";
-import type { GameCard } from "~/types/game";
+import { ref, onUnmounted, watch, computed, shallowRef, nextTick } from "vue";
+import { Container, Graphics, Sprite, type Texture } from "pixi.js";
+import type { GameCard, GameStatus } from "~/types/game";
+import { usePixiResponsiveCanvas } from "~/composables/engine/usePixiResponsiveCanvas/usePixiResponsiveCanvas";
 import { useTextureLoader } from "~/composables/engine/useTextureLoader";
 import { useParallaxEffect } from "~/composables/engine/useParallaxEffect";
-import { useAdaptiveGrid } from "~/composables/engine/useAdaptiveGrid";
+import type { GridLayout } from "~/composables/engine/useAdaptiveGridLayout";
 import { useGameCardsStore } from "~/stores/game/cards";
 import { useGameCoreStore } from "~/stores/game/core";
 
-// Props
 interface Props {
   cards: GameCard[];
-  canvasWidth: number;
-  canvasHeight: number;
-  gameStatus:
-    | "ready"
-    | "playing"
-    | "paused"
-    | "completed"
-    | "initializing"
-    | "error";
+  gameStatus: GameStatus;
   isInteractive: boolean;
   selectedCards: GameCard[];
-  deviceType?: "mobile" | "tablet" | "desktop";
-  isResizing?: boolean;
-  isOrientationLoading?: boolean;
+  containerWidth: number;
+  containerHeight: number;
 }
 
 interface Emits {
@@ -95,33 +101,73 @@ interface Emits {
   (e: "canvas-error", error?: string): void;
   (e: "canvas-ready"): void;
   (e: "loading-state-changed", isLoading: boolean): void;
+  (e: "layout-changed", layout: GridLayout): void;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
+// Development mode check
+const isDev = computed(() => process.env.NODE_ENV === "development");
+
 // Refs
-const canvasContainer = ref<HTMLDivElement>();
-const isLoading = ref(false);
+const canvasContainer = shallowRef<HTMLDivElement>();
 const error = ref<string | null>(null);
-const pixiApp = shallowRef<Application | null>(null);
 const cardSprites = shallowRef<Map<string, Container>>(new Map());
 const cardCleanupFunctions = shallowRef<Map<string, () => void>>(new Map());
+const isInitialized = ref(false);
 
+// Initialize responsive Pixi canvas with container dimensions
+const {
+  initializePixiApp,
+  renderCards: updateGrid,
+  getCardsContainer,
+  destroy: destroyPixi,
+  containerWidth: canvasWidth,
+  containerHeight: canvasHeight,
+  initializeContainerDimensions,
+  isReady,
+  deviceType,
+  deviceOrientation,
+  isResizing,
+  isLoading,
+  isOrientationChanging,
+  currentLayout,
+  getCurrentStrategy,
+} = usePixiResponsiveCanvas(canvasContainer, {
+  enableAutoResize: true, // Use Pixi's built-in responsive features
+  resizeThrottleMs: 150,
+  backgroundAlpha: 0,
+  minWidth: 320,
+  minHeight: 240,
+});
+
+// Texture loader and parallax effect
 const { getTexture, preloadCardTextures } = useTextureLoader();
 const parallaxEffect = useParallaxEffect();
 
-const adaptiveGrid = computed(() => {
-  return useAdaptiveGrid({
-    aspectRatio: 0.75,
-    spacing: 8,
-    paddingRatio: 0.02,
-  });
-});
-
+// Store instances
 const cardsStore = useGameCardsStore();
 const coreStore = useGameCoreStore();
 
+watch(
+  () => [props.containerWidth, props.containerHeight],
+  () => {
+    console.log("🔍 containerWidth", props.containerWidth);
+    console.log("🔍 containerHeight", props.containerHeight);
+
+    if (props.containerWidth && props.containerHeight) {
+      canvasHeight.value = props.containerHeight;
+      canvasWidth.value = props.containerWidth;
+
+      // Also initialize container dimensions to ensure adaptive grid is updated
+      initializeContainerDimensions();
+    }
+  },
+  { immediate: true }
+);
+
+// Card rendering utilities
 const getRarityColorHex = (rarity: string): number => {
   const colors: Record<string, number> = {
     consumer: 0xb0c3d9,
@@ -135,113 +181,88 @@ const getRarityColorHex = (rarity: string): number => {
   return colors[rarity] || colors.consumer;
 };
 
-const initializePixi = async () => {
+// Initialize Pixi application
+const initializeCanvas = async () => {
   if (!canvasContainer.value) return;
 
   try {
-    isLoading.value = true;
-    emit("loading-state-changed", true);
     error.value = null;
+    emit("loading-state-changed", true);
 
-    const devicePixelRatio = window.devicePixelRatio || 1;
+    // Initialize Pixi app with responsive features
+    const app = await initializePixiApp();
 
-    pixiApp.value = new Application();
-    await pixiApp.value.init({
-      width: props.canvasWidth,
-      height: props.canvasHeight,
-      backgroundAlpha: 0,
-      antialias: true,
-      resolution: devicePixelRatio,
-    });
-
-    canvasContainer.value.appendChild(pixiApp.value.canvas);
-
-    pixiApp.value.canvas.style.width = `${props.canvasWidth}px`;
-    pixiApp.value.canvas.style.height = `${props.canvasHeight}px`;
-
+    // Initialize parallax effect
     parallaxEffect.initializeParallax();
 
+    // Render initial cards
     await renderCards();
 
+    isInitialized.value = true;
     emit("canvas-ready");
+
+    if (isDev.value) {
+      console.log("🚀 Optimized Pixi Canvas initialized successfully");
+    }
   } catch (err) {
     const errorMessage =
       err instanceof Error ? err.message : "Failed to initialize canvas";
     error.value = errorMessage;
     emit("canvas-error", errorMessage);
-    console.error("Pixi initialization error:", err);
+    console.error("Canvas initialization error:", err);
   } finally {
-    isLoading.value = false;
     emit("loading-state-changed", false);
   }
 };
 
+// Render cards with optimized approach
 const renderCards = async () => {
-  if (!pixiApp.value || props.cards.length === 0) return;
-
-  if (props.canvasWidth <= 0 || props.canvasHeight <= 0) {
-    console.warn("⚠️ Cannot render cards with invalid canvas dimensions:", {
-      width: props.canvasWidth,
-      height: props.canvasHeight,
-    });
-    return;
-  }
+  if (!isReady.value || props.cards.length === 0) return;
 
   try {
-    pixiApp.value.stage.removeChildren();
+    const cardsContainer = getCardsContainer();
+    if (!cardsContainer) return;
+
+    // Clear previous cards
     cleanupCardListeners();
+    cardsContainer.removeChildren();
     cardSprites.value.clear();
 
+    // Preload textures
     await preloadCardTextures(props.cards);
 
-    const gridLayout = adaptiveGrid.value.generateCardLayout(
-      props.cards,
-      props.canvasWidth,
-      props.canvasHeight,
-      props.deviceType || "desktop"
+    // Update grid layout using Pixi's responsive system
+    const layout = updateGrid(props.cards);
+    if (!layout) return;
+
+    // Emit layout change
+    emit("layout-changed", layout);
+
+    // Render each card
+    await Promise.all(
+      props.cards.map(async (card, index) => {
+        const cardPosition = layout.positions[index];
+        if (!cardPosition) return;
+
+        const cardContainer = await createCardContainer(
+          card,
+          cardPosition,
+          layout
+        );
+        if (cardContainer) {
+          cardsContainer.addChild(cardContainer);
+          cardSprites.value.set(card.id, cardContainer);
+        }
+      })
     );
 
-    props.cards.forEach((card, index) => {
-      const cardPosition = gridLayout.positions[index];
-      if (!cardPosition) return;
-
-      const position = {
-        x: cardPosition.x,
-        y: cardPosition.y,
-      };
-
-      const cardContainer = new Container();
-      cardContainer.position.set(position.x, position.y);
-
-      const cardWidth = gridLayout.cardDimensions.width;
-      const cardHeight = gridLayout.cardDimensions.height;
-
-      if (card.state === "hidden") {
-        const cardElements = createHiddenCard(card, cardWidth, cardHeight);
-        cardElements.forEach((element) => cardContainer.addChild(element));
-      } else if (card.state === "revealed" || card.state === "matched") {
-        const cardElements = createRevealedCard(card, cardWidth, cardHeight);
-        cardElements.forEach((element) => cardContainer.addChild(element));
-      }
-
-      pixiApp.value!.stage.addChild(cardContainer);
-      cardSprites.value.set(card.id, cardContainer);
-
-      const parallaxDepth = 0.4 + Math.random() * 0.3;
-      parallaxEffect.addParallaxTarget(card.id, cardContainer, parallaxDepth);
-
-      const cleanupFn = parallaxEffect.setupCardEventListeners(
-        card.id,
-        cardContainer
-      );
-      if (cleanupFn) {
-        cardCleanupFunctions.value.set(card.id, cleanupFn);
-      }
-    });
-
-    console.log(
-      `🎯 Rendered ${props.cards.length} cards in ${gridLayout.rows}x${gridLayout.cols} adaptive grid with individual parallax effects`
-    );
+    if (isDev.value) {
+      console.log("🎯 Optimized card rendering completed:", {
+        cardCount: props.cards.length,
+        layoutStrategy: getCurrentStrategy.value?.name,
+        efficiency: Math.round(layout.efficiency * 100) + "%",
+      });
+    }
   } catch (err) {
     console.error("Error rendering cards:", err);
     const errorMessage =
@@ -251,6 +272,48 @@ const renderCards = async () => {
   }
 };
 
+// Create optimized card container
+const createCardContainer = async (
+  card: GameCard,
+  position: { x: number; y: number },
+  layout: GridLayout
+): Promise<Container | null> => {
+  try {
+    const cardContainer = new Container();
+    cardContainer.position.set(position.x, position.y);
+
+    const { width: cardWidth, height: cardHeight } = layout.cardDimensions;
+
+    // Create card elements based on state
+    if (card.state === "hidden") {
+      const elements = createHiddenCard(card, cardWidth, cardHeight);
+      elements.forEach((element) => cardContainer.addChild(element));
+    } else if (card.state === "revealed" || card.state === "matched") {
+      const elements = await createRevealedCard(card, cardWidth, cardHeight);
+      elements.forEach((element) => cardContainer.addChild(element));
+    }
+
+    // Setup parallax effect
+    const parallaxDepth = 0.4 + Math.random() * 0.3;
+    parallaxEffect.addParallaxTarget(card.id, cardContainer, parallaxDepth);
+
+    // Setup event listeners
+    const cleanupFn = parallaxEffect.setupCardEventListeners(
+      card.id,
+      cardContainer
+    );
+    if (cleanupFn) {
+      cardCleanupFunctions.value.set(card.id, cleanupFn);
+    }
+
+    return cardContainer;
+  } catch (err) {
+    console.error(`Error creating card container for ${card.id}:`, err);
+    return null;
+  }
+};
+
+// Create hidden card elements
 const createHiddenCard = (
   card: GameCard,
   cardWidth: number,
@@ -276,16 +339,23 @@ const createHiddenCard = (
   cardBack.on("tap", () => handleCardClick(card.id));
 
   if (props.isInteractive) {
-    cardBack.on("mouseover", () => {
+    cardBack.on("pointerover", () => {
       cardBack.alpha = 0.7;
     });
-    cardBack.on("mouseout", () => {
+    cardBack.on("pointerout", () => {
       cardBack.alpha = 0.9;
+    });
+    cardBack.on("pointerdown", () => {
+      cardBack.alpha = 0.6;
+    });
+    cardBack.on("pointerup", () => {
+      cardBack.alpha = 0.7;
     });
   }
 
   elements.push(cardBack);
 
+  // Question mark indicator
   const questionMark = new Graphics()
     .roundRect(-3, -15, 6, 20, 3)
     .fill(0xffffff)
@@ -297,11 +367,12 @@ const createHiddenCard = (
   return elements;
 };
 
-const createRevealedCard = (
+// Create revealed card elements
+const createRevealedCard = async (
   card: GameCard,
   cardWidth: number,
   cardHeight: number
-): Container[] => {
+): Promise<Container[]> => {
   const elements: Container[] = [];
 
   const rarityColor = getRarityColorHex(card.cs2Item?.rarity || "consumer");
@@ -320,47 +391,61 @@ const createRevealedCard = (
 
   elements.push(cardFront);
 
+  // Add weapon image if available
   if (card.cs2Item?.imageUrl) {
-    const texture = getTexture(card.cs2Item.imageUrl) as Texture;
-    if (texture) {
-      const weaponSprite = new Sprite(texture);
+    try {
+      const texture = (await getTexture(card.cs2Item.imageUrl)) as Texture;
+      if (texture && texture.width && texture.height) {
+        const weaponSprite = new Sprite(texture);
 
-      const maxWidth = cardWidth * 0.7;
-      const maxHeight = cardHeight * 0.6;
-      const scaleX = maxWidth / texture.width;
-      const scaleY = maxHeight / texture.height;
-      const scale = Math.min(scaleX, scaleY, 1);
+        // Scale sprite to fit card like in original
+        const maxWidth = cardWidth * 0.7;
+        const maxHeight = cardHeight * 0.6;
+        const scaleX = maxWidth / texture.width;
+        const scaleY = maxHeight / texture.height;
+        const scale = Math.min(scaleX, scaleY, 1);
 
-      weaponSprite.scale.set(scale);
-      weaponSprite.anchor.set(0.5);
-      weaponSprite.position.set(0, -5);
+        weaponSprite.scale.set(scale);
+        weaponSprite.anchor.set(0.5);
+        weaponSprite.position.set(0, -5);
 
-      if (isMatched) {
-        weaponSprite.alpha = 0.8;
+        if (isMatched) {
+          weaponSprite.alpha = 0.8;
+        }
+
+        elements.push(weaponSprite);
+
+        // Add glow effect for matched cards
+        if (isMatched) {
+          const glowRadius =
+            Math.max(weaponSprite.width, weaponSprite.height) * 0.4;
+          const glowFilter = new Graphics().circle(0, 0, glowRadius).fill({
+            color: 0x22c55e, // Green glow for matched
+            alpha: 0.15,
+          });
+
+          glowFilter.position.set(0, -5);
+          elements.unshift(glowFilter); // Add glow behind the sprite
+        }
       }
-
-      elements.push(weaponSprite);
-
-      if (isMatched) {
-        const glowRadius =
-          Math.max(weaponSprite.width, weaponSprite.height) * 0.4;
-        const glowFilter = new Graphics().circle(0, 0, glowRadius).fill({
-          color: 0x22c55e, // Green glow for matched
-          alpha: 0.15,
-        });
-
-        glowFilter.position.set(0, -5);
-        elements.unshift(glowFilter);
-      }
+    } catch (err) {
+      console.warn(`Failed to load texture for card ${card.id}:`, err);
     }
   }
 
   return elements;
 };
 
+// Event handlers
 const handleCardClick = (cardId: string) => {
-  if (!props.isInteractive || props.isResizing || props.isOrientationLoading)
+  if (
+    !props.isInteractive ||
+    props.gameStatus !== "playing" ||
+    isResizing.value ||
+    isOrientationChanging.value
+  ) {
     return;
+  }
 
   console.log(`🎯 Card clicked: ${cardId}`);
 
@@ -388,92 +473,44 @@ const handleCardClick = (cardId: string) => {
   }
 };
 
-const cleanupCardListeners = () => {
-  cardCleanupFunctions.value.forEach((cleanupFn) => {
-    cleanupFn();
-  });
-  cardCleanupFunctions.value.clear();
+const retryInitialization = async () => {
+  error.value = null;
+  await initializeCanvas();
 };
 
-const retryInitialization = async () => {
-  await initializePixi();
+const cleanupCardListeners = () => {
+  cardCleanupFunctions.value.forEach((cleanup) => cleanup());
+  cardCleanupFunctions.value.clear();
 };
 
 const cleanup = () => {
   cleanupCardListeners();
-
-  parallaxEffect.cleanup();
-
-  if (pixiApp.value) {
-    pixiApp.value.destroy(true);
-    pixiApp.value = null;
-  }
-
-  cardSprites.value.clear();
+  destroyPixi();
+  isInitialized.value = false;
 };
+
+watchEffect(async () => {
+  if (props.containerWidth && props.containerHeight) {
+    await nextTick();
+    await initializeCanvas();
+  }
+});
 
 watch(
   () => props.cards,
   async () => {
-    if (pixiApp.value && props.cards.length > 0) {
+    if (isInitialized.value && isReady.value) {
       await renderCards();
     }
   },
   { deep: true }
 );
-
-watch(
-  () => props.gameStatus,
-  async (newStatus) => {
-    if (pixiApp.value && newStatus === "playing") {
-      await renderCards();
-    }
-  }
-);
-
-watch(
-  () => [props.canvasWidth, props.canvasHeight, props.deviceType],
-  async () => {
-    if (pixiApp.value && pixiApp.value.renderer && props.cards.length > 0) {
-      console.log("🔄 Canvas dimensions changed, re-rendering cards...");
-
-      if (props.canvasWidth <= 0 || props.canvasHeight <= 0) {
-        console.warn("⚠️ Invalid canvas dimensions, skipping render");
-        return;
-      }
-
-      pixiApp.value.renderer.resize(props.canvasWidth, props.canvasHeight);
-
-      await nextTick();
-
-      await renderCards();
-    }
-  },
-  { deep: true }
-);
-
-watch(
-  () => props.deviceType,
-  async (newDeviceType, oldDeviceType) => {
-    if (newDeviceType !== oldDeviceType && pixiApp.value) {
-      console.log(
-        `📱 Device type changed from ${oldDeviceType} to ${newDeviceType} - re-rendering cards`
-      );
-      await renderCards();
-    }
-  }
-);
-
-onMounted(async () => {
-  await initializePixi();
-});
 
 onUnmounted(() => {
   cleanup();
 });
-
-defineExpose({
-  retryInitialization,
-  cleanup,
-});
 </script>
+
+<style scoped>
+/* Optional: Add any specific styling if needed */
+</style>

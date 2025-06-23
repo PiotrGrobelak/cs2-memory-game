@@ -40,7 +40,7 @@ CS2 Memory Game is an engaging, browser-based memory card matching game that com
 ### Key Features
 
 - **Canvas-based Rendering**: High-performance game board with smooth animations
-- **Multiple Difficulty Levels**: Choose from 12, 24, or 48 cards to match your skill level
+- **Multiple Difficulty Levels**: Choose from 12, 18, or 24 cards to match your skill level
 - **Seed-based Randomization**: Generate reproducible game layouts with shareable seeds
 - **QR Code Sharing**: Share game configurations via QR codes
 - **Interactive Effects**: Parallax effects responsive to mouse movement and device tilt
@@ -270,7 +270,7 @@ npm run dev
 
 - **Core Gameplay**: Single-player memory card matching with CS2 themes
 - **Advanced Rendering**: Canvas-based game board with hardware-accelerated animations
-- **Multiple Difficulty Levels**: 12, 24, and 48 card configurations
+- **Multiple Difficulty Levels**: 12, 18, and 24 card configurations
 - **Seed System**: Reproducible game layouts with sharing capabilities
 - **Visual Effects**: Parallax effects, rarity-based gradients, smooth animations
 - **Audio Integration**: Sound effects for game interactions

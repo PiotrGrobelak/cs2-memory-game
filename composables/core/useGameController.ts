@@ -145,14 +145,14 @@ export const useGameController = () => {
     {
       name: "medium" as const,
       label: "Medium",
-      cardCount: 24,
-      gridSize: { rows: 4, cols: 6 },
+      cardCount: 18,
+      gridSize: { rows: 3, cols: 6 },
     },
     {
       name: "hard" as const,
       label: "Hard",
-      cardCount: 48,
-      gridSize: { rows: 6, cols: 8 },
+      cardCount: 24,
+      gridSize: { rows: 4, cols: 6 },
     },
   ]);
 

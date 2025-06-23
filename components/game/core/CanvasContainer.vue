@@ -1,7 +1,7 @@
 <template>
   <div
     ref="canvasContainerRef"
-    class="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-lg shadow-inner h-full w-full xl:w-1/2 flex items-center justify-center min-h-0"
+    class="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-lg shadow-inner h-full w-full flex items-center justify-center min-h-0"
     :data-device="deviceType"
     data-size="canvas-container"
   >
@@ -9,23 +9,21 @@
       <GameCanvas
         v-if="shouldShowCanvas"
         :cards="cards"
-        :canvas-width="canvasDimensions.width"
-        :canvas-height="canvasDimensions.height"
         :game-status="gameStatus"
         :is-interactive="gameStatus === 'playing'"
         :selected-cards="selectedCards"
-        :device-type="deviceInfo.type"
-        :is-resizing="isResizing"
-        :is-orientation-loading="isLoading"
+        :container-width="canvasContainerWidth"
+        :container-height="canvasContainerHeight"
         @card-clicked="$emit('card-clicked', $event)"
         @canvas-ready="handleCanvasReady"
         @canvas-error="handleCanvasError"
         @loading-state-changed="$emit('loading-state-changed', $event)"
+        @layout-changed="$emit('layout-changed', $event)"
       />
 
-      <FallbackCardGrid v-else-if="showFallback" />
-
       <GameLoadingState v-else-if="isCanvasLoading" />
+
+      <FallbackCardGrid v-else-if="showFallback" />
 
       <GameEmptyState v-else />
     </ClientOnly>
@@ -34,14 +32,13 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, useTemplateRef, onMounted, nextTick } from "vue";
+import { useElementSize } from "@vueuse/core";
 import GameCanvas from "./GameCanvas.vue";
 import FallbackCardGrid from "./FallbackCardGrid.vue";
 import GameLoadingState from "./GameLoadingState.vue";
 import GameEmptyState from "./GameEmptyState.vue";
-import type { GameCard, DifficultyLevel } from "~/types/game";
-import { useResponsiveCanvas } from "~/composables/engine/useResponsiveCanvas/useResponsiveCanvas";
-
-type GameStatus = "initializing" | "ready" | "playing" | "paused" | "completed";
+import type { GameCard, DifficultyLevel, GameStatus } from "~/types/game";
+import type { GridLayout } from "~/composables/engine/useAdaptiveGridLayout";
 
 interface Props {
   showFallback: boolean;
@@ -59,6 +56,7 @@ interface Emits {
   (e: "card-clicked", cardId: string): void;
   (e: "canvas-ready" | "canvas-error"): void;
   (e: "loading-state-changed", loading: boolean): void;
+  (e: "layout-changed", layout: GridLayout): void;
 }
 
 const props = defineProps<Props>();
@@ -66,48 +64,16 @@ const emit = defineEmits<Emits>();
 
 const canvasContainerRef = useTemplateRef<HTMLDivElement>("canvasContainerRef");
 
-const isCanvasInitialized = ref(false);
 const isComponentMounted = ref(false);
 const isCanvasReady = ref(false);
 
-const {
-  isResizing,
-  isLoading,
-  canvasWidth,
-  canvasHeight,
-  deviceInfo,
-  topComponentsHeight: topHeight,
-  containerHeight,
-  containerWidth,
-} = useResponsiveCanvas({
-  minWidth: 480,
-  minHeight: 360,
-  padding: 20,
-  resizeThrottleMs: 100,
-});
-
 const hasCards = computed(() => props.cards.length > 0);
 
-const canvasDimensions = computed(() => {
-  const dimensions = {
-    width: canvasWidth.value,
-    height: canvasHeight.value,
-  };
-
-  return dimensions;
-});
+const { height: canvasContainerHeight, width: canvasContainerWidth } =
+  useElementSize(canvasContainerRef);
 
 const shouldShowCanvas = computed(() => {
-  const hasValidDimensions =
-    canvasDimensions.value.width > 0 && canvasDimensions.value.height > 0;
-
-  return (
-    !props.showFallback &&
-    hasCards.value &&
-    hasValidDimensions &&
-    isCanvasInitialized.value &&
-    isComponentMounted.value
-  );
+  return !props.showFallback && hasCards.value && isComponentMounted.value;
 });
 
 onMounted(async () => {
@@ -116,12 +82,7 @@ onMounted(async () => {
 });
 
 const isCanvasLoading = computed(() => {
-  return (
-    props.isGameLoading ||
-    isLoading.value ||
-    isResizing.value ||
-    !isCanvasInitialized.value
-  );
+  return props.isGameLoading || !isComponentMounted.value;
 });
 
 const handleCanvasReady = () => {
@@ -135,76 +96,18 @@ const handleCanvasError = () => {
 };
 
 watch(
-  canvasContainerRef,
-  () => {
-    const { width, height } = useElementSize(canvasContainerRef);
-
-    containerHeight.value = height.value;
-    containerWidth.value = width.value;
-
-    console.log("🔧 containerHeight one:", containerHeight.value);
-    console.log("🔧 containerWidth  one:", containerWidth.value);
-  },
-  { once: true }
-);
-
-// Watch for canvas dimension changes and mark as initialized
-watch(
-  [
-    () => canvasDimensions.value.width,
-    () => canvasDimensions.value.height,
-    isComponentMounted,
-    () => props.topComponentsHeight,
-  ],
-  async () => {
-    const hasValidDimensions =
-      canvasDimensions.value.width > 0 && canvasDimensions.value.height > 0;
-
-    if (hasValidDimensions && isComponentMounted.value) {
-      // Additional nextTick to ensure all reactive updates are processed
-      await nextTick();
-      isCanvasInitialized.value = true;
-
-      if (process.env.NODE_ENV === "development") {
-        console.log("🎯 Canvas dimensions ready:", {
-          width: canvasDimensions.value.width,
-          height: canvasDimensions.value.height,
-          componentMounted: isComponentMounted.value,
-          canvasInitialized: isCanvasInitialized.value,
-        });
-      }
-    } else {
-      isCanvasInitialized.value = false;
-      isCanvasReady.value = false;
-    }
-  },
-  { immediate: true }
-);
-
-// Watch for cards changes - let canvas handle its own ready state
-watch(
   () => props.cards.length,
   () => {
     if (props.cards.length === 0) {
-      // Only reset when cards are cleared
       isCanvasReady.value = false;
     }
   }
 );
 
-// Emit loading state changes
 watch(
   isCanvasLoading,
   (loading) => {
     emit("loading-state-changed", loading);
-  },
-  { immediate: true }
-);
-
-watch(
-  () => props.topComponentsHeight,
-  (newHeight) => {
-    topHeight.value = newHeight;
   },
   { immediate: true }
 );

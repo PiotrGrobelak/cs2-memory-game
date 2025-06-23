@@ -205,7 +205,7 @@ Główny kontener orchestrujący wszystkie aspekty gry. Zarządza error handling
 
 **NewGameDialog.vue**
 
-- Difficulty level selection (12/24/48 cards)
+- Difficulty level selection (12/18/24 cards)
 - Custom seed input z walidacją
 - QR code scanning functionality
 - Random seed generation

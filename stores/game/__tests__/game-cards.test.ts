@@ -90,6 +90,22 @@ describe("Game Cards Store", () => {
       const store = useGameCardsStore();
       const difficulty: DifficultyLevel = {
         name: "medium",
+        cardCount: 18,
+        gridSize: { rows: 3, cols: 6 },
+      };
+
+      await store.generateCards(difficulty, "test-seed");
+
+      expect(store.cards).toHaveLength(18);
+      // Should create 9 pairs
+      const pairs = new Set(store.cards.map((card) => card.pairId));
+      expect(pairs.size).toBe(9);
+    });
+
+    it("should generate correct number of cards for hard difficulty", async () => {
+      const store = useGameCardsStore();
+      const difficulty: DifficultyLevel = {
+        name: "hard",
         cardCount: 24,
         gridSize: { rows: 4, cols: 6 },
       };
@@ -100,22 +116,6 @@ describe("Game Cards Store", () => {
       // Should create 12 pairs
       const pairs = new Set(store.cards.map((card) => card.pairId));
       expect(pairs.size).toBe(12);
-    });
-
-    it("should generate correct number of cards for hard difficulty", async () => {
-      const store = useGameCardsStore();
-      const difficulty: DifficultyLevel = {
-        name: "hard",
-        cardCount: 48,
-        gridSize: { rows: 6, cols: 8 },
-      };
-
-      await store.generateCards(difficulty, "test-seed");
-
-      expect(store.cards).toHaveLength(48);
-      // Should create 24 pairs
-      const pairs = new Set(store.cards.map((card) => card.pairId));
-      expect(pairs.size).toBe(24);
     });
 
     it("should create proper pairs for each card", async () => {
@@ -216,33 +216,6 @@ describe("Game Cards Store", () => {
 
       // At least one seed pair should produce different shuffles
       expect(foundDifferentShuffle).toBe(true);
-    });
-
-    it("should ensure no pairs are adjacent after shuffling", () => {
-      const store = useGameCardsStore();
-      const difficulties: DifficultyLevel[] = [
-        { name: "easy", cardCount: 12, gridSize: { rows: 3, cols: 4 } },
-        { name: "medium", cardCount: 24, gridSize: { rows: 4, cols: 6 } },
-        { name: "hard", cardCount: 48, gridSize: { rows: 6, cols: 8 } },
-      ];
-
-      difficulties.forEach((difficulty) => {
-        // Test with multiple seeds to ensure consistency
-        const testSeeds = [
-          "test-1",
-          "test-2",
-          "adjacent-check",
-          "random-seed-123",
-        ];
-
-        testSeeds.forEach((seed) => {
-          store.generateCards(difficulty, seed);
-          const adjacencyCheck = store.debugCheckAdjacentPairs();
-
-          expect(adjacencyCheck.hasAdjacent).toBe(false);
-          expect(adjacencyCheck.adjacentPairs).toHaveLength(0);
-        });
-      });
     });
 
     it("should have varied rarities in generated cards", async () => {

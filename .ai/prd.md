@@ -30,7 +30,7 @@ Create an engaging, browser-based memory game featuring Counter-Strike 2 weapons
 ### 1.5 Key Features
 
 - Canvas-based game board with CS2 weapon/item cards
-- Multiple difficulty levels (12, 24, 48 cards)
+- Multiple difficulty levels (12, 18, 24 cards)
 - Seed-based randomization with QR code sharing
 - Parallax effects responsive to mouse/touch input
 - Rarity-based gradient backgrounds for cards
@@ -114,7 +114,7 @@ Memory game enthusiasts and CS2 players lack a high-quality, feature-rich browse
 - Title: Start a new memory game
 - Description: As a player, I want to start a new memory game so that I can begin playing
 - Criteria:
-  - User can select from 3 difficulty levels (12, 24, 48 cards)
+  - User can select from 3 difficulty levels (12, 18, 24 cards)
   - Game initializes with randomly shuffled card pairs
   - Timer starts when first card is clicked
   - Move counter resets to zero
@@ -145,7 +145,7 @@ Memory game enthusiasts and CS2 players lack a high-quality, feature-rich browse
 - Description: As a player, I want to select difficulty level so that I can adjust challenge to my skill
 - Criteria:
   - Three clearly labeled difficulty options available
-  - Easy: 12 cards (6 pairs), Medium: 24 cards (12 pairs), Hard: 48 cards (24 pairs)
+  - Easy: 12 cards (6 pairs), Medium: 18 cards (9 pairs), Hard: 24 cards (12 pairs)
   - Difficulty selection affects game board layout
   - Cannot change difficulty during active game
 
