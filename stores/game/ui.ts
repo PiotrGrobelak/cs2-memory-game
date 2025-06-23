@@ -1,27 +1,25 @@
 import { ref } from "vue";
 import { defineStore } from "pinia";
+import { useLocalStorage } from "@vueuse/core";
 
 export const useGameUIStore = defineStore("gameUI", () => {
-  // Dialog states
   const dialogsState = ref({
     settings: false,
     newGame: false,
     confirmRestart: false,
   });
 
-  // UI options
-  const uiOptions = ref({
-    enableSound: true,
-    enableParallax: true,
-  });
+  const uiOptions = {
+    enableSound: useLocalStorage("game-sound-enabled", true),
+    enableParallax: useLocalStorage("game-parallax-enabled", true),
+    volume: useLocalStorage("game-volume", 50), // 0-100
+  };
 
-  // Settings form state
   const settingsForm = ref({
     selectedDifficulty: "easy" as "easy" | "medium" | "hard",
     customSeed: "",
   });
 
-  // New Game form state
   const newGameForm = ref({
     difficulty: "easy" as "easy" | "medium" | "hard",
     seedOption: "random" as "random" | "custom" | "history",
@@ -29,7 +27,6 @@ export const useGameUIStore = defineStore("gameUI", () => {
     selectedHistorySeed: "",
   });
 
-  // Actions
   const toggleDialog = (dialogName: keyof typeof dialogsState.value) => {
     dialogsState.value[dialogName] = !dialogsState.value[dialogName];
   };
@@ -48,11 +45,11 @@ export const useGameUIStore = defineStore("gameUI", () => {
     });
   };
 
-  const updateUIOption = <K extends keyof typeof uiOptions.value>(
+  const updateUIOption = <K extends keyof typeof uiOptions>(
     key: K,
-    value: (typeof uiOptions.value)[K]
+    value: (typeof uiOptions)[K]["value"]
   ) => {
-    uiOptions.value[key] = value;
+    uiOptions[key].value = value;
   };
 
   const resetSettingsForm = () => {

@@ -59,6 +59,7 @@
       :visible="uiStore.dialogsState.settings"
       :enable-sound="uiStore.uiOptions.enableSound"
       :enable-parallax="uiStore.uiOptions.enableParallax"
+      :volume="uiStore.uiOptions.volume"
       @close="uiStore.closeDialog('settings')"
       @apply="handleSettingsApply"
     />
@@ -75,6 +76,7 @@ import GameControlButtons from "../ui/GameControlButtons.vue";
 import CanvasContainer from "./CanvasContainer.vue";
 import { useGameController } from "~/composables/core/useGameController";
 import { useGameCanvas } from "~/composables/core/useGameCanvas";
+import { useGameSounds } from "~/composables/audio/useGameSounds";
 
 const NewGameDialog = defineAsyncComponent(
   () => import("../dialogs/NewGameDialog.vue")
@@ -86,6 +88,7 @@ const SettingsDialog = defineAsyncComponent(
 const { width: windowWidth, height: windowHeight } = useWindowSize();
 
 const gameCanvas = useGameCanvas();
+const gameSounds = useGameSounds();
 
 const updateCanvasKey = useDebounceFn(() => {
   gameCanvas.resetCanvas();
@@ -121,5 +124,8 @@ const {
 onMounted(async () => {
   gameController.setupWatchers();
   await gameController.initialize();
+
+  // Initialize game sounds - settings auto-synced via localStorage
+  await gameSounds.initializeAudio();
 });
 </script>

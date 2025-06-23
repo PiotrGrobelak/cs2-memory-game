@@ -30,6 +30,9 @@ import { useGameTimerStore } from "~/stores/game/timer";
 import { useCS2Data } from "~/composables/data/useCS2Data";
 import { useGamePersistence } from "~/composables/data/useGamePersistence";
 
+// Audio
+import { useGameSounds } from "~/composables/audio/useGameSounds";
+
 export interface GameControlV2State {
   isLoading: boolean;
   showFallbackUI: boolean;
@@ -50,6 +53,7 @@ export const useGameController = () => {
     deleteGameState,
     saveGameResult,
   } = useGamePersistence();
+  const gameSounds = useGameSounds();
 
   // Initialize stores
   const uiStore = useGameUIStore();
@@ -455,11 +459,17 @@ export const useGameController = () => {
     const success = cardsStore.selectCard(cardId);
 
     if (success) {
+      // Play card flip sound
+      gameSounds.playCardFlip();
+
       if (cardsStore.selectedCards.length === 2) {
         const isMatch = cardsStore.checkForMatch();
         coreStore.incrementMoves();
 
         if (isMatch) {
+          // Play match sound
+          gameSounds.playMatch();
+
           coreStore.incrementMatches();
 
           const totalMatched = cardsStore.matchedCards.length / 2;
@@ -513,16 +523,23 @@ export const useGameController = () => {
   const handleSettingsApply = async (settings: {
     enableSound: boolean;
     enableParallax: boolean;
+    volume?: number;
   }) => {
     try {
       uiStore.updateUIOption("enableSound", settings.enableSound);
       uiStore.updateUIOption("enableParallax", settings.enableParallax);
 
+      if (settings.volume !== undefined) {
+        uiStore.updateUIOption("volume", settings.volume);
+      }
+
+      // Settings are automatically synced via localStorage - no need to manually update gameSounds
+
       closeDialog("settings");
       toast.add({
         severity: "success",
         summary: "Settings Applied",
-        detail: "New game started with updated settings",
+        detail: "Settings updated successfully",
         life: 3000,
       });
     } catch (error) {

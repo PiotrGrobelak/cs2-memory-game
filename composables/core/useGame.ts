@@ -21,6 +21,7 @@ import { storeToRefs } from "pinia";
 import { useGameCoreStore } from "~/stores/game/core";
 import { useGameCardsStore } from "~/stores/game/cards";
 import { useGameTimerStore } from "~/stores/game/timer";
+import { useGameSounds } from "~/composables/audio/useGameSounds";
 import type { GameOptions } from "~/types/game";
 
 /**
@@ -32,6 +33,9 @@ export const useGame = () => {
   const coreStore = useGameCoreStore();
   const cardsStore = useGameCardsStore();
   const timerStore = useGameTimerStore();
+
+  // Initialize audio
+  const gameSounds = useGameSounds();
 
   // Extract reactive refs from stores
   const {
@@ -98,6 +102,9 @@ export const useGame = () => {
     const cardSelected = cardsStore.selectCard(cardId);
     if (!cardSelected) return false;
 
+    // Play card flip sound
+    gameSounds.playCardFlip();
+
     // Increment moves in core store
     coreStore.incrementMoves();
 
@@ -106,6 +113,9 @@ export const useGame = () => {
       const isMatch = cardsStore.checkForMatch();
 
       if (isMatch) {
+        // Play match sound
+        gameSounds.playMatch();
+
         coreStore.incrementMatches();
 
         // Check if game is complete
@@ -182,6 +192,9 @@ export const useGame = () => {
     selectedCardsData,
     timeInSeconds,
     timerIsRunning,
+
+    // Audio
+    gameSounds,
 
     // Orchestrated actions
     initializeNewGame,

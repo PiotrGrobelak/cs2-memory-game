@@ -12,18 +12,33 @@
         <div class="flex items-center justify-between">
           <label class="text-sm font-medium">Enable Sound Effects</label>
           <ToggleButton
+            v-model="enableSound"
             on-icon="pi pi-volume-up"
             off-icon="pi pi-volume-off"
-            :model-value="enableSound"
           />
         </div>
 
         <div class="flex items-center justify-between">
           <label class="text-sm font-medium">Enable Parallax Effects</label>
           <ToggleButton
+            v-model="enableParallax"
             on-icon="pi pi-eye"
             off-icon="pi pi-eye-slash"
-            :model-value="enableParallax"
+          />
+        </div>
+
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium">Volume</label>
+            <span class="text-sm text-gray-600">{{ volume }}%</span>
+          </div>
+          <Slider
+            v-model="volume"
+            :min="0"
+            :max="100"
+            :step="5"
+            :disabled="!enableSound"
+            class="w-full"
           />
         </div>
       </div>
@@ -48,10 +63,12 @@ import { ref } from "vue";
 import Dialog from "primevue/dialog";
 import Button from "primevue/button";
 import ToggleButton from "primevue/togglebutton";
+import Slider from "primevue/slider";
 
 interface Settings {
   enableSound: boolean;
   enableParallax: boolean;
+  volume: number;
 }
 
 // Props
@@ -59,6 +76,7 @@ interface Props {
   visible: boolean;
   enableSound: boolean;
   enableParallax: boolean;
+  volume: number;
 }
 
 // Emits
@@ -73,6 +91,7 @@ const emit = defineEmits<Emits>();
 // Local state
 const enableSound = ref(props.enableSound);
 const enableParallax = ref(props.enableParallax);
+const volume = ref(props.volume);
 
 const handleVisibilityChange = (newVisible: boolean) => {
   if (!newVisible) {
@@ -82,9 +101,10 @@ const handleVisibilityChange = (newVisible: boolean) => {
 
 // Methods
 const handleCancel = () => {
-  // Reset form
-  enableSound.value = true;
-  enableParallax.value = true;
+  // Reset form to original values
+  enableSound.value = props.enableSound;
+  enableParallax.value = props.enableParallax;
+  volume.value = props.volume;
 
   emit("close");
 };
@@ -93,7 +113,10 @@ const handleApply = () => {
   const settings = {
     enableSound: enableSound.value,
     enableParallax: enableParallax.value,
+    volume: volume.value,
   };
+
+  console.log("handleApply", settings);
 
   emit("apply", settings);
   emit("close");
