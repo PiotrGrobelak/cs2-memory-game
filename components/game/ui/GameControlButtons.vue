@@ -1,7 +1,7 @@
 <template>
   <div class="grid grid-cols-3 gap-2 md:grid-cols-3">
     <Button
-      v-if="canResumeGame && gameStatus === 'ready'"
+      v-show="canResumeGame && gameStatus === 'ready'"
       label="Resume"
       icon="pi pi-play-circle"
       severity="success"
@@ -11,7 +11,7 @@
     />
 
     <Button
-      v-if="gameStatus === 'ready' && !canResumeGame"
+      v-show="gameStatus === 'ready' && !canResumeGame"
       label="Start"
       icon="pi pi-play"
       severity="success"
@@ -21,7 +21,7 @@
     />
 
     <Button
-      v-if="gameStatus === 'playing'"
+      v-show="gameStatus === 'playing'"
       label="Pause"
       icon="pi pi-pause"
       severity="warning"
@@ -31,7 +31,7 @@
     />
 
     <Button
-      v-if="gameStatus === 'paused'"
+      v-show="gameStatus === 'paused'"
       label="Resume"
       icon="pi pi-play"
       severity="success"
@@ -41,7 +41,7 @@
     />
 
     <Button
-      v-if="gameStatus === 'completed'"
+      v-show="gameStatus === 'completed'"
       label="Play Again"
       icon="pi pi-replay"
       severity="success"
@@ -61,7 +61,7 @@
     />
 
     <Button
-      v-if="canResumeGame"
+      v-show="canResumeGame"
       label="Clear"
       icon="pi pi-trash"
       severity="danger"

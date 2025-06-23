@@ -1,8 +1,19 @@
-import { Container, Graphics, Sprite, Text, type Texture } from "pixi.js";
+import {
+  Container,
+  Graphics,
+  Sprite,
+  Text,
+  FillGradient,
+  type Texture,
+} from "pixi.js";
 import { computed, ref } from "vue";
 import type { GameCard } from "~/types/game";
+import { useDeviceDetection } from "~/composables/device/useDeviceDetection";
 
 export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
+  // Import device detection for mobile optimization
+  const { deviceType, deviceCapabilities } = useDeviceDetection();
+
   // Simplified cache for card dimensions and rarity configurations
   const rarityConfigCache = ref<
     Map<string, { color: number; alpha: number; borderWidth: number }>
@@ -42,6 +53,39 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
     return config;
   };
 
+  const createRarityGradient = (rarity: string): FillGradient => {
+    const baseColor = getRarityColorHex(rarity);
+
+    // Convert hex color to RGB for manipulation
+    const r = (baseColor >> 16) & 255;
+    const g = (baseColor >> 8) & 255;
+    const b = baseColor & 255;
+
+    // Create lighter and darker variants
+    const lighterR = Math.min(255, Math.floor(r + (255 - r) * 0.4));
+    const lighterG = Math.min(255, Math.floor(g + (255 - g) * 0.4));
+    const lighterB = Math.min(255, Math.floor(b + (255 - b) * 0.4));
+
+    const darkerR = Math.max(0, Math.floor(r * 0.6));
+    const darkerG = Math.max(0, Math.floor(g * 0.6));
+    const darkerB = Math.max(0, Math.floor(b * 0.6));
+
+    const lighterColor = (lighterR << 16) | (lighterG << 8) | lighterB;
+    const darkerColor = (darkerR << 16) | (darkerG << 8) | darkerB;
+
+    // Create diagonal linear gradient from top-left to bottom-right
+    return new FillGradient({
+      type: "linear",
+      start: { x: 0, y: 0 }, // Top-left corner
+      end: { x: 1, y: 1 }, // Bottom-right corner
+      colorStops: [
+        { offset: 0, color: lighterColor },
+        { offset: 0.5, color: baseColor },
+        { offset: 1, color: darkerColor },
+      ],
+    });
+  };
+
   const scaleCalculationCache = ref<Map<string, number>>(new Map());
 
   const calculateOptimalScale = (
@@ -50,17 +94,30 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
     cardWidth: number,
     cardHeight: number
   ): number => {
-    const cacheKey = `${textureWidth}x${textureHeight}-${cardWidth}x${cardHeight}`;
+    const cacheKey = `${textureWidth}x${textureHeight}-${cardWidth}x${cardHeight}-${deviceType.value}`;
 
     if (scaleCalculationCache.value.has(cacheKey)) {
       return scaleCalculationCache.value.get(cacheKey)!;
     }
 
-    const maxWidth = cardWidth * 0.7;
-    const maxHeight = cardHeight * 0.5; // Reduced to make room for text
+    // Optimize image space allocation based on device type
+    const isMobileDevice = deviceType.value === "mobile";
+    const pixelRatio = deviceCapabilities.value.pixelRatio || 1;
+
+    // Increase image area for mobile devices and account for high-DPI screens
+    const maxWidthFactor = isMobileDevice ? 0.85 : 0.7; // More space on mobile
+    const maxHeightFactor = isMobileDevice ? 0.65 : 0.5; // More vertical space on mobile
+
+    const maxWidth = cardWidth * maxWidthFactor;
+    const maxHeight = cardHeight * maxHeightFactor;
+
     const scaleX = maxWidth / textureWidth;
     const scaleY = maxHeight / textureHeight;
-    const scale = Math.min(scaleX, scaleY, 1);
+
+    // For high-DPI mobile screens, allow slightly larger scaling to maintain sharpness
+    const baseScale = Math.min(scaleX, scaleY);
+    const maxScaleLimit = isMobileDevice && pixelRatio > 1.5 ? 1.2 : 1;
+    const scale = Math.min(baseScale, maxScaleLimit);
 
     scaleCalculationCache.value.set(cacheKey, scale);
     return scale;
@@ -69,29 +126,38 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
   const createWeaponNameText = (
     weaponName: string,
     cardWidth: number,
-    rarity: string,
     isMatched: boolean
   ): Text => {
-    const baseFontSize = Math.max(10, Math.min(16, cardWidth * 0.08));
-    const rarityColor = getRarityColorHex(rarity);
+    // Calculate responsive font size based on card width and device type
+    const isMobileDevice = deviceType.value === "mobile";
+    const pixelRatio = deviceCapabilities.value.pixelRatio || 1;
+
+    // Optimize font size for mobile devices with high-DPI screens
+    const baseFontScale = isMobileDevice ? 0.1 : 0.12; // Smaller text on mobile for better fit
+    const minFontSize = isMobileDevice ? 6 : 10; // Lower minimum for mobile to fit better
+    const maxFontSize = isMobileDevice ? 12 : 18; // Smaller max text on mobile
+
+    // Account for device pixel ratio to ensure crisp text rendering
+    const fontSizeMultiplier = pixelRatio > 1.5 ? 1.1 : 1;
+
+    const responsiveFontSize = Math.max(
+      minFontSize,
+      Math.min(maxFontSize, cardWidth * baseFontScale * fontSizeMultiplier)
+    );
 
     const text = new Text({
       text: weaponName,
       style: {
         fontFamily: "Arial, sans-serif",
-        fontSize: baseFontSize,
+        fontSize: responsiveFontSize,
         fontWeight: "600",
-        fill: isMatched ? 0x22c55e : 0xffffff, // Green if matched, white otherwise
-        stroke: {
-          color: rarityColor,
-          width: 0.5,
-        },
+        fill: isMatched ? 0x000000 : 0xffffff,
         dropShadow: {
           color: 0x000000,
-          alpha: 0.6,
-          angle: Math.PI / 6,
-          blur: 2,
-          distance: 2,
+          alpha: 0.5,
+          angle: Math.PI / 4,
+          blur: 1,
+          distance: 1,
         },
         align: "center",
         wordWrap: true,
@@ -220,16 +286,17 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
     const elements: Container[] = [];
 
     const isMatched = card.state === "matched";
-    const rarityConfig = getRarityConfig(
-      card.cs2Item?.rarity || "consumer",
-      isMatched
-    );
+    const rarity = card.cs2Item?.rarity || "consumer";
+    const rarityConfig = getRarityConfig(rarity, isMatched);
+
+    // Create gradient background
+    const gradient = createRarityGradient(rarity);
 
     const cardFront = new Graphics()
       .roundRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 12)
       .fill({
-        color: rarityConfig.color,
-        alpha: rarityConfig.alpha,
+        fill: gradient,
+        alpha: isMatched ? 0.8 : 0.6, // Slightly higher alpha for better gradient visibility
       })
       .stroke({
         color: rarityConfig.color,
@@ -254,7 +321,17 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
 
           weaponSprite.scale.set(scale);
           weaponSprite.anchor.set(0.5);
-          weaponSprite.position.set(0, -10); // Moved up slightly to make room for text
+
+          // Optimize positioning for mobile devices
+          const isMobileDevice = deviceType.value === "mobile";
+          const verticalOffset = isMobileDevice ? -5 : -10; // Less offset on mobile for more space
+          weaponSprite.position.set(0, verticalOffset);
+
+          // Improve image quality for high-DPI mobile screens
+          if (isMobileDevice && deviceCapabilities.value.pixelRatio > 1.5) {
+            // Ensure crisp rendering on high-DPI displays
+            weaponSprite.roundPixels = true;
+          }
 
           if (isMatched) {
             weaponSprite.alpha = 0.8;
@@ -285,12 +362,21 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
       const weaponNameText = createWeaponNameText(
         card.cs2Item.name,
         cardWidth,
-        card.cs2Item.rarity || "consumer",
         isMatched
       );
 
-      // Position the text at the bottom of the card
-      weaponNameText.position.set(0, cardHeight * 0.3);
+      // Optimize text positioning for mobile devices
+      const isMobileDevice = deviceType.value === "mobile";
+      const textVerticalPosition = isMobileDevice
+        ? cardHeight * 0.35
+        : cardHeight * 0.3;
+      weaponNameText.position.set(0, textVerticalPosition);
+
+      // Improve text rendering quality on high-DPI mobile screens
+      if (isMobileDevice && deviceCapabilities.value.pixelRatio > 1.5) {
+        weaponNameText.roundPixels = true;
+      }
+
       elements.push(weaponNameText);
     }
 

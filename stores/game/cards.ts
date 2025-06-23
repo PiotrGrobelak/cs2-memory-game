@@ -73,14 +73,6 @@ export const useGameCardsStore = defineStore("game-cards", () => {
 
     console.log("🔍 Revealed card state:", card.state);
 
-    console.log(`✅ Card ${cardId} selected and revealed`, {
-      newSelectedCount: selectedCards.value.length,
-      newRevealedCount: revealedCards.value.length,
-      selectedCards: selectedCards.value,
-      selectedCardsLength: selectedCards.value.length,
-      selectedCardsArray: [...selectedCards.value], // Force array expansion
-    });
-
     return true;
   };
 
