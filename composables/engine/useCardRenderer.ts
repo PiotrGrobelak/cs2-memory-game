@@ -1,4 +1,4 @@
-import { Container, Graphics, Sprite, type Texture } from "pixi.js";
+import { Container, Graphics, Sprite, Text, type Texture } from "pixi.js";
 import { computed, ref } from "vue";
 import type { GameCard } from "~/types/game";
 
@@ -57,13 +57,52 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
     }
 
     const maxWidth = cardWidth * 0.7;
-    const maxHeight = cardHeight * 0.6;
+    const maxHeight = cardHeight * 0.5; // Reduced to make room for text
     const scaleX = maxWidth / textureWidth;
     const scaleY = maxHeight / textureHeight;
     const scale = Math.min(scaleX, scaleY, 1);
 
     scaleCalculationCache.value.set(cacheKey, scale);
     return scale;
+  };
+
+  const createWeaponNameText = (
+    weaponName: string,
+    cardWidth: number,
+    rarity: string,
+    isMatched: boolean
+  ): Text => {
+    const baseFontSize = Math.max(10, Math.min(16, cardWidth * 0.08));
+    const rarityColor = getRarityColorHex(rarity);
+
+    const text = new Text({
+      text: weaponName,
+      style: {
+        fontFamily: "Arial, sans-serif",
+        fontSize: baseFontSize,
+        fontWeight: "600",
+        fill: isMatched ? 0x22c55e : 0xffffff, // Green if matched, white otherwise
+        stroke: {
+          color: rarityColor,
+          width: 0.5,
+        },
+        dropShadow: {
+          color: 0x000000,
+          alpha: 0.6,
+          angle: Math.PI / 6,
+          blur: 2,
+          distance: 2,
+        },
+        align: "center",
+        wordWrap: true,
+        wordWrapWidth: cardWidth * 0.8,
+      },
+    });
+
+    text.anchor.set(0.5);
+    text.alpha = isMatched ? 0.9 : 1;
+
+    return text;
   };
 
   const createHiddenCard = async (
@@ -215,7 +254,7 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
 
           weaponSprite.scale.set(scale);
           weaponSprite.anchor.set(0.5);
-          weaponSprite.position.set(0, -5);
+          weaponSprite.position.set(0, -10); // Moved up slightly to make room for text
 
           if (isMatched) {
             weaponSprite.alpha = 0.8;
@@ -232,13 +271,27 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
               alpha: 0.15,
             });
 
-            glowFilter.position.set(0, -5);
+            glowFilter.position.set(0, -10);
             elements.unshift(glowFilter); // Add glow behind the sprite
           }
         }
       } catch (err) {
         console.warn(`Failed to load texture for card ${card.id}:`, err);
       }
+    }
+
+    // Add weapon name text
+    if (card.cs2Item?.name) {
+      const weaponNameText = createWeaponNameText(
+        card.cs2Item.name,
+        cardWidth,
+        card.cs2Item.rarity || "consumer",
+        isMatched
+      );
+
+      // Position the text at the bottom of the card
+      weaponNameText.position.set(0, cardHeight * 0.3);
+      elements.push(weaponNameText);
     }
 
     return elements;

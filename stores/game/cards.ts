@@ -58,16 +58,13 @@ export const useGameCardsStore = defineStore("game-cards", () => {
       return false;
     }
 
-    if (selectedCards.value.length >= 2) {
-      console.log(
-        `❌ Too many selected cards (${selectedCards.value.length}):`,
-        selectedCards.value
-      );
+    // Check if there are already 2 revealed cards (not matched)
+    // This prevents selecting more cards when 2 are already revealed and waiting for match check
+    if (revealedCards.value.length >= 2) {
       return false;
     }
 
     if (selectedCards.value.includes(cardId)) {
-      console.log(`❌ Card ${cardId} already selected`);
       return false;
     }
 
