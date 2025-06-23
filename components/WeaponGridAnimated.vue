@@ -417,7 +417,7 @@ const renderWeapons = async () => {
     const animationColors = [0xa855f7, 0xa855f7, 0xa855f7, 0xa855f7]; // All Purple
 
     // Render each weapon card
-    props.weapons.forEach((weapon, index) => {
+    props.weapons.forEach(async (weapon, index) => {
       if (index >= 4) return;
 
       const position = positions[index];
@@ -503,7 +503,7 @@ const renderWeapons = async () => {
       frontContainer.addChild(weaponBg);
 
       // Create weapon sprite
-      const texture = getTexture(weapon.imageUrl) as Texture;
+      const texture = (await getTexture(weapon.imageUrl)) as unknown as Texture;
       if (texture) {
         const weaponSprite = new Sprite(texture);
 

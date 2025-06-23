@@ -446,10 +446,31 @@ export const useGameController = () => {
     });
   };
 
-  // Enhanced card interaction with auto-save
+  // Enhanced card interaction with game logic
   const handleCardClick = async (cardId: string) => {
     if (gameStatus.value !== "playing") return;
     console.log(`🎯 Card clicked: ${cardId}`);
+
+    // Execute game logic
+    const success = cardsStore.selectCard(cardId);
+
+    if (success) {
+      if (cardsStore.selectedCards.length === 2) {
+        const isMatch = cardsStore.checkForMatch();
+        coreStore.incrementMoves();
+
+        if (isMatch) {
+          coreStore.incrementMatches();
+
+          const totalMatched = cardsStore.matchedCards.length / 2;
+          const totalPairs = coreStore.stats.totalPairs;
+
+          if (totalMatched >= totalPairs) {
+            coreStore.completeGame();
+          }
+        }
+      }
+    }
 
     // Auto-save after each move (with debouncing)
     setTimeout(async () => {

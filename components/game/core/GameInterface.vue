@@ -3,13 +3,11 @@
     class="w-full p-2 md:px-6 lg:px-8 md:py-6 lg:py-8 h-screen flex flex-col"
   >
     <GameHeader
-      ref="gameHeaderRef"
       :can-share="canShare"
       @show-settings="uiStore.openDialog('settings')"
       @share-game="shareGame"
     />
     <div
-      ref="gameControlsRowRef"
       class="flex mobile:flex-col tablet:flex-row portrait:flex-col landscape:flex-row md:portrait:flex-row lg:flex-row gap-2 tablet:gap-4 desktop:gap-6 justify-between items-start tablet:h-auto mb-2"
     >
       <GameStatusBar
@@ -35,19 +33,16 @@
     <!-- Game Canvas Container -->
     <div class="flex-1 min-h-0 w-full flex justify-center">
       <CanvasContainer
-        :key="canvasKey"
+        :key="gameCanvas.canvasKey.value"
         :show-fallback="state.showFallbackUI"
         :is-game-loading="state.isLoading"
         :cards="cardsStore.cards"
         :game-status="gameStatus"
-        :selected-cards="cardsStore.selectedCardsData"
-        :selected-cards-ids="cardsStore.selectedCards"
-        :device-type="deviceDetection.deviceType.value"
-        :difficulty="coreStore.difficulty"
-        :top-components-height="topComponentsHeight"
         @card-clicked="handleCardClick"
-        @canvas-ready="enhancedHandleCanvasReady"
-        @canvas-error="handleCanvasError"
+        @canvas-ready="gameCanvas.handleCanvasReady"
+        @canvas-error="gameCanvas.handleCanvasError"
+        @loading-state-changed="gameCanvas.handleLoadingStateChanged"
+        @layout-changed="gameCanvas.handleLayoutChanged"
       />
     </div>
 
@@ -71,15 +66,15 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, useTemplateRef, ref, watch } from "vue";
-import { useElementSize, useDebounceFn, useWindowSize } from "@vueuse/core";
+import { onMounted, watch } from "vue";
+import { useDebounceFn, useWindowSize } from "@vueuse/core";
 
 import GameHeader from "../ui/header/GameHeader.vue";
 import GameStatusBar from "../ui/status/GameStatusBar.vue";
 import GameControlButtons from "../ui/GameControlButtons.vue";
 import CanvasContainer from "./CanvasContainer.vue";
-import { useDeviceDetection } from "~/composables/device/useDeviceDetection";
 import { useGameController } from "~/composables/core/useGameController";
+import { useGameCanvas } from "~/composables/core/useGameCanvas";
 
 const NewGameDialog = defineAsyncComponent(
   () => import("../dialogs/NewGameDialog.vue")
@@ -88,30 +83,15 @@ const SettingsDialog = defineAsyncComponent(
   () => import("../dialogs/SettingsDialog.vue")
 );
 
-const gameHeaderRef = useTemplateRef<HTMLElement>("gameHeaderRef");
-const gameControlsRowRef = useTemplateRef<HTMLElement>("gameControlsRowRef");
-
-const canvasRemountTrigger = ref("");
-
-const { height: headerHeight } = useElementSize(gameHeaderRef);
-const { height: gameControlsHeight } = useElementSize(gameControlsRowRef);
 const { width: windowWidth, height: windowHeight } = useWindowSize();
 
-const topComponentsHeight = computed(() => {
-  return headerHeight.value + gameControlsHeight.value;
-});
+const gameCanvas = useGameCanvas();
 
 const updateCanvasKey = useDebounceFn(() => {
-  canvasRemountTrigger.value = `${Date.now()}-${windowWidth.value}-${windowHeight.value}`;
+  gameCanvas.resetCanvas();
 }, 500);
 
 watch([windowWidth, windowHeight], updateCanvasKey);
-
-const canvasKey = computed(() => {
-  return `canvas-${canvasRemountTrigger.value}`;
-});
-
-const deviceDetection = useDeviceDetection();
 
 const gameController = useGameController();
 
@@ -131,18 +111,12 @@ const {
   playAgain,
   resumeUnfinishedGame,
   clearUnfinishedGame,
-  handleCanvasReady,
-  handleCanvasError,
   handleCardClick,
   shareGame,
   handleSettingsApply,
   handleNewGameStart,
   seedValidator,
 } = gameController;
-
-const enhancedHandleCanvasReady = () => {
-  handleCanvasReady();
-};
 
 onMounted(async () => {
   gameController.setupWatchers();

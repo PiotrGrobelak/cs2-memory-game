@@ -84,7 +84,8 @@ const pixiApp = ref<Application | null>(null);
 const revealedTiles = ref<boolean[]>([false, false, false, false]); // Track which tiles are revealed
 
 // Composables
-const { getTexture, preloadCardTextures } = useTextureLoader();
+const { getTexture, getCachedTexture, preloadCardTextures } =
+  useTextureLoader();
 
 // Methods
 const getRarityColor = (rarity: string): string => {
@@ -205,7 +206,7 @@ const renderWeapons = async () => {
         pixiApp.value!.stage.addChild(cardBackground);
 
         // Create weapon image
-        const texture = getTexture(weapon.imageUrl) as Texture;
+        const texture = getCachedTexture(weapon.imageUrl) as Texture;
         if (texture) {
           const weaponSprite = new Sprite(texture);
 
@@ -288,15 +289,52 @@ const renderWeapons = async () => {
         tileNumber.position.set(position.x, position.y);
         pixiApp.value!.stage.addChild(tileNumber);
 
-        // Add question mark text (using a simple graphic representation)
-        const questionMark = new Graphics()
-          .roundRect(-2, -10, 4, 15, 2)
-          .fill(0x16a34a)
-          .roundRect(-2, 5, 4, 4, 2)
-          .fill(0x16a34a);
+        // Add CS2 logo instead of question mark
+        try {
+          const logoTexture = getCachedTexture("/cs2-logo.svg") as Texture;
+          if (logoTexture && logoTexture.width && logoTexture.height) {
+            const logoSprite = new Sprite(logoTexture);
 
-        questionMark.position.set(position.x, position.y);
-        pixiApp.value!.stage.addChild(questionMark);
+            // Calculate scale to fit logo nicely in the tile
+            const maxLogoWidth = 35;
+            const maxLogoHeight = 20;
+            const logoScaleX = maxLogoWidth / logoTexture.width;
+            const logoScaleY = maxLogoHeight / logoTexture.height;
+            const logoScale = Math.min(logoScaleX, logoScaleY, 1);
+
+            logoSprite.scale.set(logoScale);
+            logoSprite.anchor.set(0.5);
+            logoSprite.position.set(position.x, position.y);
+            logoSprite.tint = 0x16a34a; // Green tint to match the theme
+            logoSprite.interactive = false; // Allow clicks to pass through to cover tile
+
+            pixiApp.value!.stage.addChild(logoSprite);
+          } else {
+            // Fallback to question mark if logo fails to load
+            const questionMark = new Graphics()
+              .roundRect(-2, -10, 4, 15, 2)
+              .fill(0x16a34a)
+              .roundRect(-2, 5, 4, 4, 2)
+              .fill(0x16a34a);
+
+            questionMark.position.set(position.x, position.y);
+            pixiApp.value!.stage.addChild(questionMark);
+          }
+        } catch (err) {
+          console.warn(
+            "Failed to load CS2 logo, using fallback question mark:",
+            err
+          );
+          // Fallback to question mark if logo fails to load
+          const questionMark = new Graphics()
+            .roundRect(-2, -10, 4, 15, 2)
+            .fill(0x16a34a)
+            .roundRect(-2, 5, 4, 4, 2)
+            .fill(0x16a34a);
+
+          questionMark.position.set(position.x, position.y);
+          pixiApp.value!.stage.addChild(questionMark);
+        }
       }
     });
 
@@ -346,6 +384,15 @@ watch(
 // Lifecycle
 onMounted(async () => {
   await nextTick();
+
+  // Preload CS2 logo
+  try {
+    await getTexture("/cs2-logo.svg");
+    console.log("CS2 logo preloaded successfully");
+  } catch (err) {
+    console.warn("Failed to preload CS2 logo:", err);
+  }
+
   if (props.weapons.length > 0) {
     await initializePixi();
   }

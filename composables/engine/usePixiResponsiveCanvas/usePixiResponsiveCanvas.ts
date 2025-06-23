@@ -48,8 +48,6 @@ export const usePixiResponsiveCanvas = (
   });
 
   const deviceType = computed((): DeviceType => {
-    if (typeof window === "undefined") return "desktop";
-
     const deviceType = uaResult.device.type;
     const os = uaResult.os.name?.toLowerCase();
     const width = containerDimensions.value.width;

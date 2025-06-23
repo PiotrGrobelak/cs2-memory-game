@@ -2,7 +2,6 @@
   <div
     ref="canvasContainerRef"
     class="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-lg shadow-inner h-full w-full flex items-center justify-center min-h-0"
-    :data-device="deviceType"
     data-size="canvas-container"
   >
     <ClientOnly>
@@ -11,7 +10,6 @@
         :cards="cards"
         :game-status="gameStatus"
         :is-interactive="gameStatus === 'playing'"
-        :selected-cards="selectedCards"
         :container-width="canvasContainerWidth"
         :container-height="canvasContainerHeight"
         @card-clicked="$emit('card-clicked', $event)"
@@ -45,11 +43,6 @@ interface Props {
   isGameLoading: boolean;
   cards: GameCard[];
   gameStatus: GameStatus;
-  selectedCards: GameCard[];
-  selectedCardsIds: string[];
-  deviceType: string;
-  difficulty: DifficultyLevel | null;
-  topComponentsHeight: number;
 }
 
 interface Emits {
