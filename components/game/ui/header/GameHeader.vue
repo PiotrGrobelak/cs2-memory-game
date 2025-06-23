@@ -1,7 +1,7 @@
 <template>
-  <div class="mb-6 transition-all duration-200">
+  <div class="mb-2 transition-all duration-200">
     <div class="flex justify-between items-center">
-      <h1 class="text-3xl font-bold text-gray-800 dark:text-white">
+      <h1 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
         CS2 Memory Game
       </h1>
       <div class="flex items-center gap-3">

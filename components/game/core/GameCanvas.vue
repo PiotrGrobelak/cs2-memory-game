@@ -42,10 +42,10 @@
         <p class="text-sm font-medium">
           {{
             props.isResizing
-              ? "Przerysowywanie planszy..."
+              ? "Redrawing board..."
               : props.isOrientationLoading
-                ? "Dostosowywanie do orientacji..."
-                : "Ładowanie..."
+                ? "Adjusting to orientation..."
+                : "Loading..."
           }}
         </p>
       </div>

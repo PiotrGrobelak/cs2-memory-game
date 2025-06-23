@@ -1,6 +1,6 @@
 <template>
-  <div class="game-status-bar mb-4 transition-all duration-200">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+  <div class="portrait:mb-2">
+    <div class="grid grid-cols-4 gap-1 justify-center">
       <GameStatCard
         icon="pi-clock"
         label="Time"
@@ -39,7 +39,6 @@ interface Stats {
   totalPairs: number;
 }
 
-// Props
 interface Props {
   timeElapsed: number;
   stats: Stats;
@@ -48,16 +47,13 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// Computed
 const formattedTime = computed(() => {
-  // Convert milliseconds to seconds
   const totalSeconds = Math.floor(props.timeElapsed / 1000);
 
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
 
-  // Show hours only if the game has been running for more than an hour
   if (hours > 0) {
     return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
   } else {

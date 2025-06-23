@@ -1,13 +1,16 @@
 <template>
-  <Card class="transition-all duration-200 hover:shadow-md">
+  <Card
+    class="transition-all duration-200 hover:shadow-md"
+    :pt="{ body: { class: 'p-1!' } }"
+  >
     <template #content>
-      <div class="flex items-center gap-3">
+      <div :class="contentClass">
         <i :class="iconClass" />
-        <div>
-          <div class="text-sm text-gray-600 dark:text-gray-400">
+        <div class="min-w-0 flex-1">
+          <div :class="labelClass">
             {{ label }}
           </div>
-          <div class="text-lg font-semibold">
+          <div :class="valueClass">
             {{ value }}
           </div>
         </div>
@@ -32,11 +35,32 @@ const props = withDefaults(defineProps<Props>(), {
   color: "blue",
 });
 
-// Computed class for the icon
+const contentClass = computed(() => [
+  "flex items-center",
+  // Mobile: compact spacing, Desktop: more generous spacing
+  "gap-2 md:gap-3",
+]);
+
 const iconClass = computed(() => [
   "pi",
   props.icon,
   `text-${props.color}-500`,
-  "text-2xl",
+  // Mobile: smaller icon, Desktop: larger icon
+  "text-base md:text-xl",
+  "flex-shrink-0", // Prevent icon from shrinking
+]);
+
+const labelClass = computed(() => [
+  "text-gray-600 dark:text-gray-400",
+  // Mobile: smaller text, Desktop: normal text
+  "text-xs md:text-sm",
+  "font-medium",
+]);
+
+const valueClass = computed(() => [
+  "font-semibold",
+  // Mobile: smaller text, Desktop: larger text
+  "text-sm md:text-lg",
+  "truncate", // Prevent text overflow on very small screens
 ]);
 </script>

@@ -1,1 +1,100 @@
 @import "tailwindcss";
+
+/* PrimeVue Toast Mobile Responsive Styles */
+@media (max-width: 768px) {
+  /* Toast container positioning and sizing for mobile */
+  .p-toast {
+    position: fixed !important;
+    top: 1rem !important;
+    right: 1rem !important;
+    left: 1rem !important;
+    width: auto !important;
+    max-width: calc(100vw - 2rem) !important;
+    z-index: 9999 !important;
+  }
+
+  /* Individual toast message styling for mobile */
+  .p-toast-message {
+    min-width: auto !important;
+    max-width: 100% !important;
+    margin-bottom: 0.5rem !important;
+    padding: 0.75rem !important;
+    font-size: 0.875rem !important; /* 14px */
+    border-radius: 0.5rem !important;
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  }
+
+  /* Toast message content */
+  .p-toast-message-content {
+    padding: 0 !important;
+    gap: 0.5rem !important;
+  }
+
+  /* Toast icon styling for mobile */
+  .p-toast-message-icon {
+    font-size: 1.125rem !important; /* 18px - smaller icon */
+    width: 1.125rem !important;
+    height: 1.125rem !important;
+  }
+
+  /* Toast text content */
+  .p-toast-message-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Toast summary (title) */
+  .p-toast-summary {
+    font-weight: 600 !important;
+    font-size: 0.875rem !important; /* 14px */
+    line-height: 1.25 !important;
+    margin: 0 !important;
+  }
+
+  /* Toast detail text */
+  .p-toast-detail {
+    font-size: 0.8125rem !important; /* 13px */
+    line-height: 1.25 !important;
+    margin: 0 !important;
+    margin-top: 0.125rem !important;
+  }
+
+  /* Close button for mobile */
+  .p-toast-icon-close {
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+    font-size: 0.875rem !important;
+    border-radius: 0.25rem !important;
+  }
+}
+
+/* Additional mobile-specific adjustments for very small screens */
+@media (max-width: 480px) {
+  .p-toast {
+    top: 0.75rem !important;
+    right: 0.75rem !important;
+    left: 0.75rem !important;
+    max-width: calc(100vw - 1.5rem) !important;
+  }
+
+  .p-toast-message {
+    padding: 0.625rem !important;
+    font-size: 0.8125rem !important; /* 13px */
+  }
+
+  .p-toast-message-icon {
+    font-size: 1rem !important; /* 16px */
+    width: 1rem !important;
+    height: 1rem !important;
+  }
+
+  .p-toast-summary {
+    font-size: 0.8125rem !important; /* 13px */
+  }
+
+  .p-toast-detail {
+    font-size: 0.75rem !important; /* 12px */
+  }
+}

@@ -1,22 +1,22 @@
 <template>
-  <div class="flex flex-wrap gap-3 justify-start items-start">
+  <div class="grid grid-cols-3 gap-2 md:grid-cols-3">
     <Button
       v-if="canResumeGame && gameStatus === 'ready'"
-      label="Resume Game"
+      label="Resume"
       icon="pi pi-play-circle"
       severity="success"
-      size="large"
-      class="min-w-[140px]"
+      size="small"
+      class="w-[100px] sm:w-auto sm:min-w-[100px]"
       @click="$emit('resume-unfinished-game')"
     />
 
     <Button
       v-if="gameStatus === 'ready' && !canResumeGame"
-      label="Start Game"
+      label="Start"
       icon="pi pi-play"
       severity="success"
-      size="large"
-      class="min-w-[140px]"
+      size="small"
+      class="w-[100px] sm:w-auto sm:min-w-[100px]"
       @click="$emit('start-new-game')"
     />
 
@@ -25,8 +25,8 @@
       label="Pause"
       icon="pi pi-pause"
       severity="warning"
-      size="large"
-      class="min-w-[140px]"
+      size="small"
+      class="w-[100px] sm:w-auto sm:min-w-[100px]"
       @click="$emit('pause-game')"
     />
 
@@ -35,8 +35,8 @@
       label="Resume"
       icon="pi pi-play"
       severity="success"
-      size="large"
-      class="min-w-[140px]"
+      size="small"
+      class="w-[100px] sm:w-auto sm:min-w-[100px]"
       @click="$emit('resume-game')"
     />
 
@@ -45,35 +45,38 @@
       label="Play Again"
       icon="pi pi-replay"
       severity="success"
-      size="large"
-      class="min-w-[140px]"
+      size="small"
+      class="w-[100px] sm:w-auto sm:min-w-[100px]"
       @click="$emit('play-again')"
     />
 
     <Button
-      label="New Game"
+      label="New"
       icon="pi pi-plus"
       severity="info"
       outlined
-      size="large"
-      class="min-w-[140px]"
+      size="small"
+      class="w-[100px] sm:w-auto sm:min-w-[100px]"
       @click="$emit('show-new-game-dialog')"
     />
 
     <Button
       v-if="canResumeGame"
-      label="Clear Save"
+      label="Clear"
       icon="pi pi-trash"
       severity="danger"
       outlined
-      size="large"
-      class="min-w-[140px]"
+      size="small"
+      class="w-[100px] sm:w-auto sm:min-w-[100px]"
       @click="$emit('clear-unfinished-game')"
     />
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
+import { useWindowSize } from "@vueuse/core";
+
 type GameStatus = "ready" | "playing" | "paused" | "completed" | "initializing";
 
 interface Props {
@@ -96,4 +99,10 @@ interface Emits {
 
 defineProps<Props>();
 defineEmits<Emits>();
+
+const { width } = useWindowSize();
+
+const buttonSize = computed(() => {
+  return width.value <= 768 ? "small" : "large";
+});
 </script>

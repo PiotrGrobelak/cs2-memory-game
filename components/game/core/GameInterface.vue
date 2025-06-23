@@ -1,6 +1,6 @@
 <template>
   <div
-    class="w-full px-2 py-4 md:px-6 lg:px-8 md:py-6 lg:py-8 h-screen flex flex-col"
+    class="w-full p-2 md:px-6 lg:px-8 md:py-6 lg:py-8 h-screen flex flex-col"
   >
     <GameHeader
       ref="gameHeaderRef"
@@ -9,21 +9,16 @@
       @share-game="shareGame"
     />
     <div
-      ref="statusBarRowRef"
-      class="flex flex-row gap-4 md:gap-6 lg:gap-8 justify-between items-center md:my-2 lg:my-3"
+      ref="gameControlsRowRef"
+      class="flex mobile:flex-col tablet:flex-row portrait:flex-col landscape:flex-row md:portrait:flex-row lg:flex-row gap-2 tablet:gap-4 desktop:gap-6 justify-between items-start tablet:h-auto mb-2"
     >
       <GameStatusBar
+        class="w-[50%] portrait:w-full"
         :time-elapsed="coreStore.stats.timeElapsed"
         :stats="coreStore.stats"
         :current-score="coreStore.currentScore"
       />
-      <GameProgressBar :progress="gameProgress" />
-    </div>
 
-    <div
-      ref="controlButtonsRowRef"
-      class="flex flex-row gap-4 md:gap-6 lg:gap-8 justify-between items-start h-24 md:h-auto md:my-2 lg:my-3"
-    >
       <GameControlButtons
         :can-resume-game="canResumeGame"
         :game-status="gameStatus"
@@ -35,7 +30,6 @@
         @show-new-game-dialog="uiStore.openDialog('newGame')"
         @clear-unfinished-game="clearUnfinishedGame"
       />
-      <UnfinishedGameBanner v-show="canResumeGame" />
     </div>
 
     <!-- Game Canvas Container -->
@@ -77,13 +71,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, useTemplateRef, nextTick, ref, watch } from "vue";
+import { onMounted, computed, useTemplateRef, ref, watch } from "vue";
 import { useElementSize, useDebounceFn, useWindowSize } from "@vueuse/core";
 
 import GameHeader from "../ui/header/GameHeader.vue";
 import GameStatusBar from "../ui/status/GameStatusBar.vue";
-import GameProgressBar from "../ui/status/GameProgressBar.vue";
-import UnfinishedGameBanner from "../ui/UnfinishedGameBanner.vue";
 import GameControlButtons from "../ui/GameControlButtons.vue";
 import SettingsDialog from "../dialogs/SettingsDialog.vue";
 import NewGameDialog from "../dialogs/NewGameDialog.vue";
@@ -93,22 +85,16 @@ import { useDeviceDetection } from "~/composables/device/useDeviceDetection";
 import { useGameController } from "~/composables/core/useGameController";
 
 const gameHeaderRef = useTemplateRef<HTMLElement>("gameHeaderRef");
-const statusBarRowRef = useTemplateRef<HTMLElement>("statusBarRowRef");
-const controlButtonsRowRef = useTemplateRef<HTMLElement>(
-  "controlButtonsRowRef"
-);
+const gameControlsRowRef = useTemplateRef<HTMLElement>("gameControlsRowRef");
 
 const canvasRemountTrigger = ref("");
 
 const { height: headerHeight } = useElementSize(gameHeaderRef);
-const { height: statusBarHeight } = useElementSize(statusBarRowRef);
-const { height: controlButtonsHeight } = useElementSize(controlButtonsRowRef);
+const { height: gameControlsHeight } = useElementSize(gameControlsRowRef);
 const { width: windowWidth, height: windowHeight } = useWindowSize();
 
 const topComponentsHeight = computed(() => {
-  return (
-    headerHeight.value + statusBarHeight.value + controlButtonsHeight.value
-  );
+  return headerHeight.value + gameControlsHeight.value;
 });
 
 const updateCanvasKey = useDebounceFn(() => {
@@ -128,7 +114,6 @@ const gameController = useGameController();
 const {
   state,
   gameStatus,
-  gameProgress,
   canShare,
   canResumeGame,
   difficulties,
