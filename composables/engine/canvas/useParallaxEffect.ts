@@ -165,7 +165,13 @@ export const useParallaxEffect = () => {
     event: FederatedPointerEvent,
     cardElement: Container
   ) => {
-    if (!shouldUseMouseParallax.value || !parallaxState.value.enabled) return;
+    if (!parallaxState.value.enabled) return;
+
+    // For mobile, only apply parallax if card is actively being touched
+    if (isMobile.value) {
+      const target = parallaxTargets.value.get(cardId);
+      if (!target || !target.isActive) return;
+    }
 
     // Get global position from PIXI pointer event
     const globalPos = event.global;
@@ -174,18 +180,18 @@ export const useParallaxEffect = () => {
     const cardBounds = cardElement.getLocalBounds();
     const cardGlobalPos = cardElement.toGlobal(cardBounds);
 
-    // Calculate relative mouse position within the card
-    const mouseX = globalPos.x - cardGlobalPos.x;
-    const mouseY = globalPos.y - cardGlobalPos.y;
+    // Calculate relative pointer position within the card
+    const pointerX = globalPos.x - cardGlobalPos.x;
+    const pointerY = globalPos.y - cardGlobalPos.y;
 
     // Convert to normalized coordinates (-1 to 1)
     const centerX = cardBounds.width / 2;
     const centerY = cardBounds.height / 2;
-    const normalizedX = (mouseX - centerX) / centerX;
-    const normalizedY = (mouseY - centerY) / centerY;
+    const normalizedX = (pointerX - centerX) / centerX;
+    const normalizedY = (pointerY - centerY) / centerY;
 
     // Apply subtle parallax effect
-    const maxOffset = 8;
+    const maxOffset = isMobile.value ? 6 : 8; // Slightly less on mobile
     const offsetX = normalizedX * maxOffset;
     const offsetY = normalizedY * maxOffset;
 
@@ -298,10 +304,16 @@ export const useParallaxEffect = () => {
       handleCardMouseMove(cardId, event, cardElement);
     };
 
-    const handleTouchStart = () => {
-      // Touch started - prepare for parallax
-      // TODO - add parallax effect here
-      console.log("👆 Touch started - prepare for parallax");
+    const handleTouchStart = (event: TouchEvent) => {
+      // Touch started - prepare for parallax, set initial position
+      if (event.touches.length > 0) {
+        const touch = event.touches[0];
+        // Store initial touch position for potential parallax calculation
+        const target = parallaxTargets.value.get(cardId);
+        if (target) {
+          target.isActive = true;
+        }
+      }
     };
 
     const handleTouchEnd = () => {
@@ -318,10 +330,32 @@ export const useParallaxEffect = () => {
     if (cardElement && typeof (cardElement as Container).on === "function") {
       const pixiContainer = cardElement as Container;
       pixiContainer.interactive = true;
+
+      // Basic pointer events that work for both mouse and touch
       pixiContainer.on("pointerover", handleMouseEnter);
       pixiContainer.on("pointerout", handleMouseLeave);
       pixiContainer.on("pointermove", (event: FederatedPointerEvent) => {
         handlePixiPointerMove(cardId, event, pixiContainer);
+      });
+
+      // Simple touch support - pointerdown/up works for both mouse and touch
+      pixiContainer.on("pointerdown", (event: FederatedPointerEvent) => {
+        const target = parallaxTargets.value.get(cardId);
+        if (target && isMobile.value) {
+          target.isActive = true;
+        }
+      });
+
+      pixiContainer.on("pointerup", () => {
+        if (isMobile.value) {
+          resetCardParallax(cardId);
+        }
+      });
+
+      pixiContainer.on("pointerupoutside", () => {
+        if (isMobile.value) {
+          resetCardParallax(cardId);
+        }
       });
     }
     // For HTML Element
@@ -345,6 +379,9 @@ export const useParallaxEffect = () => {
         pixiContainer.off("pointerover", handleMouseEnter);
         pixiContainer.off("pointerout", handleMouseLeave);
         pixiContainer.off("pointermove");
+        pixiContainer.off("pointerdown");
+        pixiContainer.off("pointerup");
+        pixiContainer.off("pointerupoutside");
       } else if (cardElement instanceof HTMLElement) {
         cardElement.removeEventListener("mouseenter", handleMouseEnter);
         cardElement.removeEventListener("mouseleave", handleMouseLeave);

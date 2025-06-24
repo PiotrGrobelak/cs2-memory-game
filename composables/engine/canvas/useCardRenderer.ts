@@ -246,21 +246,37 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
       cardBackContainer.addChild(questionMark);
     }
 
+    // Use more specific click/tap handlers that don't interfere with parallax
     cardBackContainer.on("click", () => onCardClick(card.id));
     cardBackContainer.on("tap", () => onCardClick(card.id));
 
     if (isInteractive) {
-      cardBackContainer.on("pointerover", () => {
+      // Use mouse-specific events to avoid conflicts with touch-based parallax
+      cardBackContainer.on("mouseenter", () => {
         cardBack.alpha = 0.7;
       });
-      cardBackContainer.on("pointerout", () => {
+      cardBackContainer.on("mouseleave", () => {
         cardBack.alpha = 0.9;
       });
-      cardBackContainer.on("pointerdown", () => {
+
+      // Only handle pointerdown/up for visual feedback, not for movement tracking
+      let isPointerDown = false;
+      cardBackContainer.on("pointerdown", (event) => {
+        isPointerDown = true;
         cardBack.alpha = 0.6;
+        // Don't stop propagation - let parallax handle movement
       });
-      cardBackContainer.on("pointerup", () => {
-        cardBack.alpha = 0.7;
+      cardBackContainer.on("pointerup", (event) => {
+        if (isPointerDown) {
+          cardBack.alpha = 0.7;
+          isPointerDown = false;
+        }
+      });
+      cardBackContainer.on("pointerupoutside", (event) => {
+        if (isPointerDown) {
+          cardBack.alpha = 0.9;
+          isPointerDown = false;
+        }
       });
     }
 
