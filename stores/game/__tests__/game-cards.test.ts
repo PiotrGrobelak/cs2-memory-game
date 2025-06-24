@@ -481,9 +481,8 @@ describe("Game Cards Store", () => {
       // Select and reveal some cards
       store.selectCard(store.cards[0].id);
       store.selectCard(store.cards[1].id);
-      store.selectCard(store.cards[2].id);
 
-      expect(store.revealedCards).toHaveLength(3);
+      expect(store.revealedCards).toHaveLength(2);
 
       store.hideAllRevealedCards();
 
@@ -509,6 +508,148 @@ describe("Game Cards Store", () => {
       expect(store.cards[1].state).toBe("matched");
       expect(store.cards[2].state).toBe("hidden");
       expect(store.cards[3].state).toBe("hidden");
+    });
+  });
+
+  describe("State Restoration", () => {
+    beforeEach(() => {
+      const store = useGameCardsStore();
+      const difficulty: DifficultyLevel = {
+        name: "easy",
+        cardCount: 12,
+        gridSize: { rows: 3, cols: 4 },
+      };
+      store.generateCards(difficulty, "test-seed");
+    });
+
+    it("should restore cards from saved state", () => {
+      const store = useGameCardsStore();
+
+      // Create mock saved cards
+      const savedCards = [
+        {
+          id: "card-1",
+          pairId: "pair-1",
+          state: "hidden" as const,
+          position: { x: 0, y: 0 },
+          cs2Item: {
+            id: "item-1",
+            name: "Test Item 1",
+            imageUrl: "/test1.jpg",
+            rarity: "consumer" as const,
+            category: "weapon" as const,
+            collection: "Test Collection",
+            exterior: "Factory New",
+          },
+        },
+        {
+          id: "card-2",
+          pairId: "pair-1",
+          state: "matched" as const,
+          position: { x: 1, y: 0 },
+          cs2Item: {
+            id: "item-1",
+            name: "Test Item 1",
+            imageUrl: "/test1.jpg",
+            rarity: "consumer" as const,
+            category: "weapon" as const,
+            collection: "Test Collection",
+            exterior: "Factory New",
+          },
+        },
+      ];
+
+      store.restoreState(savedCards);
+
+      expect(store.cards).toHaveLength(2);
+      expect(store.cards[0].id).toBe("card-1");
+      expect(store.cards[0].state).toBe("hidden");
+      expect(store.cards[1].id).toBe("card-2");
+      expect(store.cards[1].state).toBe("matched");
+      expect(store.selectedCards).toHaveLength(0);
+    });
+
+    it("should ensure no revealed cards exist after restoration", () => {
+      const store = useGameCardsStore();
+
+      // Create mock saved cards that include some that might have been revealed
+      const savedCards = [
+        {
+          id: "card-1",
+          pairId: "pair-1",
+          state: "hidden" as const,
+          position: { x: 0, y: 0 },
+          cs2Item: {
+            id: "item-1",
+            name: "Test Item 1",
+            imageUrl: "/test1.jpg",
+            rarity: "consumer" as const,
+            category: "weapon" as const,
+            collection: "Test Collection",
+            exterior: "Factory New",
+          },
+        },
+        {
+          id: "card-2",
+          pairId: "pair-1",
+          state: "hidden" as const, // Should be hidden even if originally revealed
+          position: { x: 1, y: 0 },
+          cs2Item: {
+            id: "item-1",
+            name: "Test Item 1",
+            imageUrl: "/test1.jpg",
+            rarity: "consumer" as const,
+            category: "weapon" as const,
+            collection: "Test Collection",
+            exterior: "Factory New",
+          },
+        },
+      ];
+
+      store.restoreState(savedCards);
+
+      // Critical test: No cards should be revealed after restoration
+      expect(store.revealedCards).toHaveLength(0);
+      expect(store.selectedCards).toHaveLength(0);
+
+      // All cards should be either hidden or matched
+      store.cards.forEach((card) => {
+        expect(card.state === "hidden" || card.state === "matched").toBe(true);
+        expect(card.state).not.toBe("revealed");
+      });
+    });
+
+    it("should clear selected cards when restoring state", () => {
+      const store = useGameCardsStore();
+
+      // First select some cards
+      store.selectCard(store.cards[0].id);
+      store.selectCard(store.cards[1].id);
+      expect(store.selectedCards).toHaveLength(2);
+
+      // Create mock saved cards
+      const savedCards = [
+        {
+          id: "new-card-1",
+          pairId: "new-pair-1",
+          state: "hidden" as const,
+          position: { x: 0, y: 0 },
+          cs2Item: {
+            id: "new-item-1",
+            name: "New Test Item",
+            imageUrl: "/new-test.jpg",
+            rarity: "consumer" as const,
+            category: "weapon" as const,
+            collection: "New Collection",
+            exterior: "Factory New",
+          },
+        },
+      ];
+
+      store.restoreState(savedCards);
+
+      // Selected cards should be cleared after restoration
+      expect(store.selectedCards).toHaveLength(0);
     });
   });
 

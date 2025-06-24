@@ -36,25 +36,11 @@ export const useGameCardsStore = defineStore("game-cards", () => {
   const selectCard = (cardId: string): boolean => {
     const card = cards.value.find((c) => c.id === cardId);
 
-    console.log(`🎯 selectCard called for ${cardId}`, {
-      cardExists: !!card,
-      cardState: card?.state,
-      selectedCount: selectedCards.value.length,
-      selectedCards: selectedCards.value.map((id) => id),
-      revealedCount: revealedCards.value.length,
-      revealedCards: revealedCards.value.map((c) => ({
-        id: c.id,
-        state: c.state,
-      })),
-    });
-
     if (!card) {
-      console.log(`❌ Card ${cardId} not found`);
       return false;
     }
 
     if (card.state !== "hidden") {
-      console.log(`❌ Card ${cardId} not hidden (state: ${card.state})`);
       return false;
     }
 
@@ -71,23 +57,11 @@ export const useGameCardsStore = defineStore("game-cards", () => {
     card.state = "revealed";
     selectedCards.value.push(cardId);
 
-    console.log("🔍 Revealed card state:", card.state);
-
     return true;
   };
 
   const checkForMatch = (): boolean => {
-    console.log(`🔍 checkForMatch called`, {
-      selectedCount: selectedCards.value.length,
-      selectedCards: selectedCards.value,
-      revealedCount: revealedCards.value.length,
-      revealedCardIds: revealedCards.value.map((c) => c.id),
-    });
-
     if (selectedCards.value.length !== 2) {
-      console.log(
-        `❌ Wrong number of selected cards: ${selectedCards.value.length}`
-      );
       return false;
     }
 
@@ -96,76 +70,33 @@ export const useGameCardsStore = defineStore("game-cards", () => {
     const secondCard = cards.value.find((c) => c.id === secondCardId);
 
     if (!firstCard || !secondCard) {
-      console.log(`❌ Cards not found:`, {
-        firstCard: !!firstCard,
-        secondCard: !!secondCard,
-      });
       selectedCards.value = [];
       return false;
     }
 
     const isMatch = firstCard.pairId === secondCard.pairId;
 
-    console.log(`🎮 Match check result:`, {
-      firstCard: { id: firstCard.id, pairId: firstCard.pairId },
-      secondCard: { id: secondCard.id, pairId: secondCard.pairId },
-      isMatch,
-    });
-
     if (isMatch) {
       firstCard.state = "matched";
       secondCard.state = "matched";
-      console.log(
-        `✅ Match found! Cards ${firstCard.id} and ${secondCard.id} matched`
-      );
     } else {
-      console.log(
-        `❌ No match - scheduling hide for cards ${firstCard.id} and ${secondCard.id} in 1000ms`
-      );
-
       const cardToHide1 = firstCard;
       const cardToHide2 = secondCard;
 
       setTimeout(() => {
-        console.log(
-          `⏰ Timeout triggered - attempting to hide cards ${cardToHide1.id} and ${cardToHide2.id}`
-        );
-        console.log(
-          `Current states: ${cardToHide1.id}=${cardToHide1.state}, ${cardToHide2.id}=${cardToHide2.state}`
-        );
-
-        let hiddenCount = 0;
-
         if (cardToHide1.state === "revealed") {
           cardToHide1.state = "hidden";
-          hiddenCount++;
-          console.log(`🔄 Card ${cardToHide1.id} hidden`);
-        } else {
-          console.log(
-            `⚠️  Card ${cardToHide1.id} not hidden - current state: ${cardToHide1.state}`
-          );
         }
 
         if (cardToHide2.state === "revealed") {
           cardToHide2.state = "hidden";
-          hiddenCount++;
-          console.log(`🔄 Card ${cardToHide2.id} hidden`);
-        } else {
-          console.log(
-            `⚠️  Card ${cardToHide2.id} not hidden - current state: ${cardToHide2.state}`
-          );
         }
-
-        console.log(
-          `🔄 Cards hiding complete, ${hiddenCount} cards hidden, current revealed count: ${revealedCards.value.length}`
-        );
 
         cards.value = [...cards.value];
       }, 1000);
     }
 
     selectedCards.value = [];
-    console.log(`🧹 Selected cards cleared, can now select new cards`);
     return isMatch;
   };
 
@@ -178,7 +109,6 @@ export const useGameCardsStore = defineStore("game-cards", () => {
     selectedCards.value = [];
 
     if (difficulty.gridSize.rows === 0 || difficulty.gridSize.cols === 0) {
-      console.warn("Grid size is zero, no cards generated");
       return;
     }
 
@@ -187,9 +117,7 @@ export const useGameCardsStore = defineStore("game-cards", () => {
 
     if (cs2Items.length === 0) {
       try {
-        console.log("Fetching CS2 items for card generation...");
         availableItems = await cs2ApiService.getCS2Items(cardPairs * 2); // Get more items than needed for variety
-        console.log(`Fetched ${availableItems.length} CS2 items for cards`);
       } catch (error) {
         console.warn("Failed to fetch CS2 items, using placeholders:", error);
         availableItems = [];
@@ -199,10 +127,6 @@ export const useGameCardsStore = defineStore("game-cards", () => {
     }
 
     if (availableItems.length < cardPairs) {
-      console.log(
-        `Need ${cardPairs} items but only have ${availableItems.length}, creating placeholders`
-      );
-
       const placeholderCount = cardPairs - availableItems.length;
       const rarities: ItemRarity[] = [
         "consumer",
@@ -255,10 +179,6 @@ export const useGameCardsStore = defineStore("game-cards", () => {
     setCardPositions(newCards, difficulty.gridSize);
 
     cards.value = newCards;
-
-    console.log(
-      `Generated ${newCards.length} cards (${selectedItems.length} pairs) with ${selectedItems.filter((item) => !item.id.startsWith("placeholder")).length} real CS2 items`
-    );
 
     newCards.forEach((card) => {
       imageLoader.loadImage(card.cs2Item.imageUrl);
@@ -458,7 +378,12 @@ export const useGameCardsStore = defineStore("game-cards", () => {
   };
 
   const restoreState = (savedCards: GameCard[]): void => {
-    cards.value = [...savedCards];
+    const cleanedSavedCards = savedCards.map((card) => ({
+      ...card,
+      state: card.state === "revealed" ? ("hidden" as const) : card.state,
+    }));
+
+    cards.value = [...cleanedSavedCards];
 
     selectedCards.value = [];
   };

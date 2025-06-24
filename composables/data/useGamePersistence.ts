@@ -17,7 +17,7 @@
  * - Session management for multiple concurrent games
  * - Storage usage monitoring and optimization
  */
-import { ref, computed } from "vue";
+import { ref, computed, readonly } from "vue";
 import type { GameState, GameResult, GameOptions } from "~/types/game";
 
 export interface PersistenceState {
@@ -97,7 +97,6 @@ export const useGamePersistence = () => {
       localStorage.setItem(getStorageKey("GAME_STATE"), serialized);
 
       state.value.lastSaved = Date.now();
-      console.log("Game state saved successfully");
       return true;
     } catch (error) {
       const errorMessage =
@@ -121,7 +120,6 @@ export const useGamePersistence = () => {
 
       const stored = localStorage.getItem(getStorageKey("GAME_STATE"));
       if (!stored) {
-        console.log("No saved game state found");
         return null;
       }
 
@@ -132,7 +130,6 @@ export const useGamePersistence = () => {
         throw new Error("Invalid save data format");
       }
 
-      console.log("Game state loaded successfully");
       return saveData.gameState as GameState;
     } catch (error) {
       const errorMessage =

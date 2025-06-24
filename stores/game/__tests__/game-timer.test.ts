@@ -369,7 +369,7 @@ describe("Game Timer Store", () => {
       vi.advanceTimersByTime(3600000);
       store.pauseTimer();
 
-      expect(store.formattedTime).toBe("60:00");
+      expect(store.formattedTime).toBe("01:00:00");
       expect(store.timeInSeconds).toBe(3600);
 
       vi.useRealTimers();

@@ -53,8 +53,6 @@ export const useGameSounds = createGlobalState(() => {
           matchAudio.value.addEventListener("error", reject, { once: true });
         }),
       ]);
-
-      console.log("Game sounds loaded successfully");
     } catch (error) {
       console.warn("Failed to load game sounds:", error);
       loadError.value =
@@ -70,12 +68,6 @@ export const useGameSounds = createGlobalState(() => {
   });
 
   const playCardFlip = async () => {
-    console.log(
-      "playCardFlip",
-      enableSound.value,
-      flipAudio.value,
-      isLoading.value
-    );
     if (!enableSound.value || !flipAudio.value || isLoading.value) return;
 
     try {
@@ -100,7 +92,6 @@ export const useGameSounds = createGlobalState(() => {
   const updateSoundSettings = (options: Partial<GameSoundsOptions>) => {
     if (options.enableSound !== undefined) {
       enableSound.value = options.enableSound;
-      console.log("updateSoundSettings", enableSound.value);
     }
     if (options.volume !== undefined) {
       volume.value = Math.max(0, Math.min(100, options.volume));

@@ -5,12 +5,21 @@ import { createPinia } from "pinia";
 // Mock global fetch for API tests
 global.fetch = vi.fn();
 
-// Mock localStorage
+// Mock localStorage with actual storage functionality
+const localStorageData: Record<string, string> = {};
 const localStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
+  getItem: vi.fn((key: string) => localStorageData[key] || null),
+  setItem: vi.fn((key: string, value: string) => {
+    localStorageData[key] = value;
+  }),
+  removeItem: vi.fn((key: string) => {
+    Reflect.deleteProperty(localStorageData, key);
+  }),
+  clear: vi.fn(() => {
+    Object.keys(localStorageData).forEach((key) => {
+      Reflect.deleteProperty(localStorageData, key);
+    });
+  }),
 };
 vi.stubGlobal("localStorage", localStorageMock);
 
@@ -49,7 +58,52 @@ vi.stubGlobal(
       console.log("getContext", contextId);
       return canvasContextMock;
     }
-  },
+  }
+);
+
+// Mock Audio API for game sounds tests
+vi.stubGlobal(
+  "Audio",
+  class MockAudio {
+    addEventListener = vi.fn();
+    removeEventListener = vi.fn();
+    play = vi.fn().mockResolvedValue(undefined);
+    pause = vi.fn();
+    load = vi.fn();
+    currentTime = 0;
+    volume = 1;
+    preload = "auto";
+    src = "";
+    duration = 0;
+    paused = true;
+    ended = false;
+    muted = false;
+    readyState = 4; // HAVE_ENOUGH_DATA
+
+    constructor(src?: string) {
+      if (src) this.src = src;
+    }
+  }
+);
+
+vi.stubGlobal(
+  "HTMLAudioElement",
+  class MockHTMLAudioElement {
+    addEventListener = vi.fn();
+    removeEventListener = vi.fn();
+    play = vi.fn().mockResolvedValue(undefined);
+    pause = vi.fn();
+    load = vi.fn();
+    currentTime = 0;
+    volume = 1;
+    preload = "auto";
+    src = "";
+    duration = 0;
+    paused = true;
+    ended = false;
+    muted = false;
+    readyState = 4; // HAVE_ENOUGH_DATA
+  }
 );
 
 // Configure Vue Test Utils with Pinia

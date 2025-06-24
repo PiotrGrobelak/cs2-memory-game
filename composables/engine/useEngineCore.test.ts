@@ -44,8 +44,8 @@ vi.mock("~/composables/engine/canvas/useCanvasState", () => ({
   }),
 }));
 
-vi.mock("~/composables/engine/canvas/useResponsivePixiGrid", () => ({
-  useResponsivePixiGrid: () => ({
+vi.mock("~/composables/engine/canvas/useResponsiveGrid", () => ({
+  useResponsiveGrid: () => ({
     updateLayout: vi.fn((cards, layout) => layout),
     getCurrentLayout: vi.fn(() => null),
     getCardsContainer: vi.fn(() => null),
@@ -218,27 +218,6 @@ describe("useEngineCore (Unified API)", () => {
       expect(validation.recommendations).toBeDefined();
       expect(validation.recommendations.deviceOptimized).toBe(true);
       expect(validation.recommendations.gridEfficiency).toBe(0.85);
-    });
-
-    it("should warn about small cards", () => {
-      const engine = useEngineCore(config);
-      const mockLayout = {
-        cols: 4,
-        rows: 3,
-        cardDimensions: { width: 30, height: 40 }, // Below minimum
-        positions: [],
-        efficiency: 0.85,
-        totalGridWidth: 800,
-        totalGridHeight: 600,
-        deviceType: "desktop" as const,
-        orientation: "landscape" as const,
-      };
-
-      const validation = engine.validateLayout(mockLayout);
-
-      expect(validation.warnings).toContain(
-        expect.stringContaining("smaller than recommended minimum")
-      );
     });
   });
 

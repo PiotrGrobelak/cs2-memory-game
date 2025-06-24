@@ -85,7 +85,6 @@ export const useGameController = () => {
   };
 
   const autoSaveGameState = async () => {
-    console.log("🔄 Auto-saving game state");
     if (!state.value.autoSaveEnabled || state.value.isLoading) return;
 
     if (cardsStore.cards.length === 0) return;
@@ -96,7 +95,6 @@ export const useGameController = () => {
 
       if (success) {
         state.value.lastAutoSave = Date.now();
-        console.log("🎮 Game state auto-saved");
       }
     } catch (error) {
       console.error("❌ Auto-save failed:", error);
@@ -107,9 +105,7 @@ export const useGameController = () => {
   // Auto-save when component unmounts if game is active
   onUnmounted(async () => {
     if (coreStore.isPlaying && cardsStore.cards.length > 0) {
-      console.log("🔄 Component unmounting - auto-saving active game");
       await autoSaveGameState();
-      console.log("💾 Game state saved before component unmount");
     }
   });
 
@@ -117,9 +113,7 @@ export const useGameController = () => {
   if (typeof window !== "undefined") {
     const handleBeforeUnload = async () => {
       if (coreStore.isPlaying && cardsStore.cards.length > 0) {
-        console.log("🚪 Page unloading - auto-saving active game");
         await autoSaveGameState();
-        console.log("💾 Game state saved before page unload");
       }
     };
 
@@ -198,7 +192,6 @@ export const useGameController = () => {
 
       const savedState = await loadGameState();
       if (!savedState) {
-        console.log("🔄 No saved game state found");
         state.value.isLoading = false;
         return false;
       }
