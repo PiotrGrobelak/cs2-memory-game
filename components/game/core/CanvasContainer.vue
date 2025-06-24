@@ -39,7 +39,6 @@ import GameLoadingState from "./GameLoadingState.vue";
 import GameEmptyState from "./GameEmptyState.vue";
 import type { GameCard, GameStatus } from "~/types/game";
 import type { GridLayout } from "~/composables/engine/layout/adaptiveGridLayout";
-import { useDeviceDetection } from "~/composables/engine/device";
 
 interface Props {
   showFallback: boolean;
@@ -50,15 +49,13 @@ interface Props {
 
 interface Emits {
   (e: "card-clicked", cardId: string): void;
-  (e: "canvas-ready" | "canvas-error"): void;
+  (e: "canvas-ready" | "canvas-error", error?: string | Error | unknown): void;
   (e: "loading-state-changed", loading: boolean): void;
   (e: "layout-changed", layout: GridLayout): void;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
-
-const { windowSize } = useDeviceDetection();
 
 const canvasContainerRef = useTemplateRef<HTMLDivElement>("canvasContainerRef");
 
@@ -90,9 +87,9 @@ const handleCanvasReady = () => {
   emit("canvas-ready");
 };
 
-const handleCanvasError = () => {
+const handleCanvasError = (error: string | Error | unknown) => {
   isCanvasReady.value = false;
-  emit("canvas-error");
+  emit("canvas-error", error);
 };
 
 watch(
@@ -112,7 +109,6 @@ watch(
   { immediate: true }
 );
 
-// Watch for size changes and recreate canvas when resizing stops
 const recreateCanvasOnResize = useDebounceFn(() => {
   canvasKey.value = `canvas-${Date.now()}`;
   isCanvasReady.value = false;

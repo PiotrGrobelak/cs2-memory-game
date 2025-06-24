@@ -1,7 +1,6 @@
-import { ref, computed, onMounted, onUnmounted, readonly } from "vue";
+import { ref, computed, readonly } from "vue";
 import { UAParser } from "ua-parser-js";
 
-// Types
 export type DeviceType = "mobile" | "tablet" | "desktop";
 export type DeviceOrientation = "portrait" | "landscape";
 export type BreakpointSize = "sm" | "md" | "lg" | "xl";
@@ -95,33 +94,6 @@ export const useDeviceDetection = () => {
     () => deviceCapabilities.value.hasMouseSupport
   );
 
-  const updateWindowSize = () => {
-    if (typeof window !== "undefined") {
-      windowSize.value = {
-        width: window.innerWidth,
-        height: window.innerHeight,
-      };
-    }
-  };
-
-  onMounted(() => {
-    updateWindowSize();
-    window.addEventListener("resize", updateWindowSize);
-
-    console.log("🔍 Device detection initialized:", {
-      deviceType: deviceType.value,
-      deviceOrientation: deviceOrientation.value,
-      windowSize: windowSize.value,
-      capabilities: deviceCapabilities.value,
-    });
-  });
-
-  onUnmounted(() => {
-    if (typeof window !== "undefined") {
-      window.removeEventListener("resize", updateWindowSize);
-    }
-  });
-
   return {
     deviceType: readonly(deviceType),
     deviceOrientation: readonly(deviceOrientation),
@@ -131,6 +103,5 @@ export const useDeviceDetection = () => {
     isMobile: computed(() => ["mobile", "tablet"].includes(deviceType.value)),
     isTouchDevice: readonly(isTouchDevice),
     hasMouseSupport: readonly(hasMouseSupport),
-    updateWindowSize,
   };
 };

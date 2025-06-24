@@ -84,7 +84,6 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-// Development mode check
 const isDev = computed(() => process.env.NODE_ENV === "development");
 
 const canvasContainer = shallowRef<HTMLDivElement>();
@@ -94,7 +93,6 @@ const cardCleanupFunctions = shallowRef<Map<string, () => void>>(new Map());
 const isInitialized = ref(false);
 const pixiApp = shallowRef<Application | null>(null);
 
-// Initialize single engine instance for the entire component
 const engine = useEngineCore({
   enableAutoResize: true,
   resizeThrottleMs: 150,
@@ -105,7 +103,6 @@ const engine = useEngineCore({
   maintainAspectRatio: true,
 });
 
-// Extract properties from engine
 const {
   deviceType,
   deviceOrientation,
@@ -119,7 +116,6 @@ const {
   getCardsContainer,
 } = engine;
 
-// Computed properties for backward compatibility
 const canvasWidth = computed(() => containerDimensions.value.width);
 const canvasHeight = computed(() => containerDimensions.value.height);
 const isOrientationChanging = computed(() => false);
@@ -130,8 +126,13 @@ const parallaxEffect = useParallaxEffect();
 const { createCardContainer: createCard } = useCardRenderer(getTexture);
 
 const initializeCanvas = async () => {
-  if (!canvasContainer.value || !props.containerWidth || !props.containerHeight)
+  if (
+    !canvasContainer.value ||
+    !props.containerWidth ||
+    !props.containerHeight
+  ) {
     return;
+  }
 
   try {
     error.value = null;
@@ -276,7 +277,6 @@ const handleCardClick = (cardId: string) => {
     return;
   }
 
-  console.log(`🎯 Card clicked: ${cardId}`);
   emit("card-clicked", cardId);
 };
 
@@ -296,7 +296,6 @@ const cleanup = () => {
   isInitialized.value = false;
 };
 
-// Initialize canvas on mount only - resize handled by parent component via key change
 onMounted(async () => {
   await nextTick();
   await initializeCanvas();

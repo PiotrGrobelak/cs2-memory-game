@@ -118,9 +118,6 @@ export const useGameCanvas = () => {
       if (forceDegradation) {
         degradationLevel.value =
           degradationLevel.value === "none" ? "reduced" : "minimal";
-        console.log(
-          `🔄 Canvas reset with degradation level: ${degradationLevel.value}`
-        );
       }
 
       await nextTick(); // Allow DOM to update
@@ -158,10 +155,6 @@ export const useGameCanvas = () => {
       const retryDelay =
         RECOVERY_CONFIG.RETRY_DELAYS[classifiedError.retryCount] || 5000;
 
-      console.log(
-        `🔄 Attempting automatic recovery in ${retryDelay}ms (attempt ${classifiedError.retryCount + 1})`
-      );
-
       setTimeout(async () => {
         if (canvasError.value) {
           canvasError.value.retryCount++;
@@ -175,7 +168,6 @@ export const useGameCanvas = () => {
       // Enable fallback mode for non-recoverable errors
       hasFallbackCanvas.value = true;
       degradationLevel.value = "minimal";
-      console.log("🚨 Enabling fallback canvas mode due to critical error");
     }
   };
 

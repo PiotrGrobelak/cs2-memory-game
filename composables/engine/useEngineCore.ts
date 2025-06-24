@@ -137,7 +137,6 @@ export const useEngineCore = (config: PixiResponsiveConfig) => {
     orientation: deviceOrientation.value,
     isTouch: isTouchDevice.value,
     isMobile: isMobile.value,
-    windowSize: windowSize.value,
     capabilities: deviceCapabilities.value,
   }));
 
@@ -196,7 +195,6 @@ export const useEngineCore = (config: PixiResponsiveConfig) => {
     deviceOrientation,
     isMobile,
     isTouchDevice,
-    windowSize,
     deviceCapabilities,
 
     // Canvas state

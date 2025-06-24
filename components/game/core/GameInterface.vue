@@ -33,7 +33,6 @@
     <!-- Game Canvas Container -->
     <div class="flex-1 min-h-0 w-full flex justify-center">
       <CanvasContainer
-        :key="gameCanvas.canvasKey.value"
         :show-fallback="state.showFallbackUI"
         :is-game-loading="state.isLoading"
         :cards="cardsStore.cards"
@@ -67,8 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, watch } from "vue";
-import { useDebounceFn, useWindowSize } from "@vueuse/core";
+import { onMounted } from "vue";
 
 import GameHeader from "../ui/header/GameHeader.vue";
 import GameStatusBar from "../ui/status/GameStatusBar.vue";
@@ -85,16 +83,8 @@ const SettingsDialog = defineAsyncComponent(
   () => import("../dialogs/SettingsDialog.vue")
 );
 
-const { width: windowWidth, height: windowHeight } = useWindowSize();
-
 const gameCanvas = useGameCanvas();
 const gameSounds = useGameSounds();
-
-const updateCanvasKey = useDebounceFn(() => {
-  gameCanvas.resetCanvas();
-}, 500);
-
-watch([windowWidth, windowHeight], updateCanvasKey);
 
 const gameController = useGameController();
 
@@ -125,7 +115,6 @@ onMounted(async () => {
   gameController.setupWatchers();
   await gameController.initialize();
 
-  // Initialize game sounds - settings auto-synced via localStorage
   await gameSounds.initializeAudio();
 });
 </script>

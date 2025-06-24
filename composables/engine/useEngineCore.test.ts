@@ -181,7 +181,6 @@ describe("useEngineCore (Unified API)", () => {
       expect(deviceInfo.orientation).toBe("landscape");
       expect(deviceInfo.isTouch).toBe(false);
       expect(deviceInfo.isMobile).toBe(false);
-      expect(deviceInfo.windowSize).toEqual({ width: 1200, height: 800 });
     });
   });
 
