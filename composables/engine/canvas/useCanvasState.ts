@@ -1,4 +1,4 @@
-import { ref, reactive, computed, watch, onUnmounted } from "vue";
+import { ref, reactive, computed, watch } from "vue";
 import type { Application } from "pixi.js";
 import { useThrottleFn } from "@vueuse/core";
 import type {
@@ -200,10 +200,6 @@ export const useCanvasState = (config: PixiResponsiveConfig) => {
   };
 
   setupDeviceWatchers();
-
-  onUnmounted(() => {
-    destroy();
-  });
 
   return {
     // State

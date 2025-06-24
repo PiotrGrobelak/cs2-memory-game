@@ -33,6 +33,7 @@
 <script setup lang="ts">
 import {
   ref,
+  onMounted,
   onUnmounted,
   watch,
   computed,
@@ -69,6 +70,7 @@ interface Props {
   isInteractive: boolean;
   containerWidth: number;
   containerHeight: number;
+  isResizing: boolean;
 }
 
 interface Emits {
@@ -92,8 +94,8 @@ const cardCleanupFunctions = shallowRef<Map<string, () => void>>(new Map());
 const isInitialized = ref(false);
 const pixiApp = shallowRef<Application | null>(null);
 
-// Initialize engine for device detection and state management
-const baseEngine = useEngineCore({
+// Initialize single engine instance for the entire component
+const engine = useEngineCore({
   enableAutoResize: true,
   resizeThrottleMs: 150,
   backgroundAlpha: 0,
@@ -103,26 +105,25 @@ const baseEngine = useEngineCore({
   maintainAspectRatio: true,
 });
 
-// Engine with pixi app (will be set after initialization)
-let renderEngine: ReturnType<typeof useEngineCore> | null = null;
-
-// Extract properties from base engine
+// Extract properties from engine
 const {
   deviceType,
   deviceOrientation,
   containerDimensions,
   updateCanvasDimensions,
   initializeFromElement,
+  initializePixiApp,
   isLoading,
-  isResizing,
   currentLayout,
-} = baseEngine;
+  renderCards: engineRenderCards,
+  getCardsContainer,
+} = engine;
 
 // Computed properties for backward compatibility
 const canvasWidth = computed(() => containerDimensions.value.width);
 const canvasHeight = computed(() => containerDimensions.value.height);
 const isOrientationChanging = computed(() => false);
-const isReady = computed(() => !!pixiApp.value && !!renderEngine);
+const isReady = computed(() => !!pixiApp.value);
 
 const { getTexture, preloadCardTextures } = useTextureLoader();
 const parallaxEffect = useParallaxEffect();
@@ -136,32 +137,14 @@ const initializeCanvas = async () => {
     error.value = null;
     emit("loading-state-changed", true);
 
-    // Update canvas dimensions using the base engine
+    // Update canvas dimensions using the engine
     updateCanvasDimensions(props.containerWidth, props.containerHeight);
     initializeFromElement(canvasContainer.value);
 
-    const app = await initializePixiApp();
+    const app = await createPixiApp();
 
-    // Create render engine with pixi app
-    renderEngine = useEngineCore(
-      {
-        enableAutoResize: true,
-        resizeThrottleMs: 150,
-        backgroundAlpha: 0,
-        minWidth: 320,
-        minHeight: 240,
-        padding: 20,
-        maintainAspectRatio: true,
-      },
-      app
-    );
-
-    // Update render engine with current container dimensions
-    renderEngine.updateCanvasDimensions(
-      props.containerWidth,
-      props.containerHeight
-    );
-    renderEngine.initializeFromElement(canvasContainer.value);
+    // Initialize Pixi app in the engine
+    initializePixiApp(app);
 
     parallaxEffect.initializeParallax();
 
@@ -184,7 +167,7 @@ const initializeCanvas = async () => {
   }
 };
 
-const initializePixiApp = async (): Promise<Application> => {
+const createPixiApp = async (): Promise<Application> => {
   if (!canvasContainer.value) {
     throw new Error("Canvas container not available");
   }
@@ -215,10 +198,10 @@ const initializePixiApp = async (): Promise<Application> => {
 };
 
 const renderCards = async () => {
-  if (!isReady.value || props.cards.length === 0 || !renderEngine) return;
+  if (!isReady.value || props.cards.length === 0) return;
 
   try {
-    const cardsContainer = renderEngine.getCardsContainer();
+    const cardsContainer = getCardsContainer();
     if (!cardsContainer) return;
 
     cleanupCardListeners();
@@ -227,7 +210,7 @@ const renderCards = async () => {
 
     await preloadCardTextures(props.cards);
 
-    const layout = renderEngine.renderCards(props.cards);
+    const layout = engineRenderCards(props.cards);
     if (!layout) return;
 
     emit("layout-changed", layout);
@@ -287,7 +270,7 @@ const handleCardClick = (cardId: string) => {
   if (
     !props.isInteractive ||
     props.gameStatus !== "playing" ||
-    isResizing.value ||
+    props.isResizing ||
     isOrientationChanging.value
   ) {
     return;
@@ -309,21 +292,15 @@ const cleanupCardListeners = () => {
 
 const cleanup = () => {
   cleanupCardListeners();
-  baseEngine.destroy();
-  if (renderEngine) {
-    renderEngine.destroy();
-  }
+  engine.destroy();
   isInitialized.value = false;
 };
 
-watch(
-  () => [props.containerWidth, props.containerHeight],
-  async () => {
-    await nextTick();
-    await initializeCanvas();
-  },
-  { immediate: true }
-);
+// Initialize canvas on mount only - resize handled by parent component via key change
+onMounted(async () => {
+  await nextTick();
+  await initializeCanvas();
+});
 
 watch(
   () => props.cards,

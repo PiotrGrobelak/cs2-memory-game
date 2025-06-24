@@ -1,4 +1,4 @@
-import { shallowRef, onUnmounted } from "vue";
+import { shallowRef } from "vue";
 import { Container, Graphics, type Application } from "pixi.js";
 import type { GameCard } from "~/types/game";
 import type { GridLayout } from "../layout/adaptiveGridLayout";
@@ -110,10 +110,6 @@ export const useResponsiveGrid = (app: Application) => {
   };
 
   initializeContainers();
-
-  onUnmounted(() => {
-    destroy();
-  });
 
   return {
     // State

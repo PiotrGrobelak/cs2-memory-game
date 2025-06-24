@@ -141,7 +141,8 @@ describe("useEngineCore (Unified API)", () => {
 
     it("should initialize with config and app", () => {
       const mockApp = { test: "app" } as unknown as Application;
-      const engine = useEngineCore(config, mockApp);
+      const engine = useEngineCore(config);
+      engine.initializePixiApp(mockApp);
 
       expect(engine.deviceType.value).toBe("desktop");
       expect(engine.pixiGrid).toBeDefined();
@@ -244,7 +245,8 @@ describe("useEngineCore (Unified API)", () => {
   describe("cleanup", () => {
     it("should destroy all resources", () => {
       const mockApp = { test: "app" } as unknown as Application;
-      const engine = useEngineCore(config, mockApp);
+      const engine = useEngineCore(config);
+      engine.initializePixiApp(mockApp);
 
       engine.destroy();
 

@@ -7,11 +7,13 @@
     <ClientOnly>
       <GameCanvas
         v-if="shouldShowCanvas"
+        :key="canvasKey"
         :cards="cards"
         :game-status="gameStatus"
         :is-interactive="gameStatus === 'playing'"
         :container-width="canvasContainerWidth"
         :container-height="canvasContainerHeight"
+        :is-resizing="isResizing"
         @card-clicked="$emit('card-clicked', $event)"
         @canvas-ready="handleCanvasReady"
         @canvas-error="handleCanvasError"
@@ -30,13 +32,14 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, useTemplateRef, onMounted, nextTick } from "vue";
-import { useElementSize } from "@vueuse/core";
+import { useElementSize, useDebounceFn } from "@vueuse/core";
 import GameCanvas from "./GameCanvas.vue";
 import FallbackCardGrid from "./FallbackCardGrid.vue";
 import GameLoadingState from "./GameLoadingState.vue";
 import GameEmptyState from "./GameEmptyState.vue";
 import type { GameCard, GameStatus } from "~/types/game";
 import type { GridLayout } from "~/composables/engine/layout/adaptiveGridLayout";
+import { useDeviceDetection } from "~/composables/engine/device";
 
 interface Props {
   showFallback: boolean;
@@ -55,10 +58,14 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
+const { windowSize } = useDeviceDetection();
+
 const canvasContainerRef = useTemplateRef<HTMLDivElement>("canvasContainerRef");
 
 const isComponentMounted = ref(false);
 const isCanvasReady = ref(false);
+const canvasKey = ref(`canvas-${Date.now()}`);
+const isResizing = ref(false);
 
 const hasCards = computed(() => props.cards.length > 0);
 
@@ -104,4 +111,18 @@ watch(
   },
   { immediate: true }
 );
+
+// Watch for size changes and recreate canvas when resizing stops
+const recreateCanvasOnResize = useDebounceFn(() => {
+  canvasKey.value = `canvas-${Date.now()}`;
+  isCanvasReady.value = false;
+  isResizing.value = false;
+}, 300);
+
+watch([canvasContainerWidth, canvasContainerHeight], (newSize, oldSize) => {
+  if (oldSize && (newSize[0] !== oldSize[0] || newSize[1] !== oldSize[1])) {
+    isResizing.value = true;
+    recreateCanvasOnResize();
+  }
+});
 </script>

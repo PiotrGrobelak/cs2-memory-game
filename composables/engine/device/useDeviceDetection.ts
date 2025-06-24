@@ -6,7 +6,7 @@ export type DeviceType = "mobile" | "tablet" | "desktop";
 export type DeviceOrientation = "portrait" | "landscape";
 export type BreakpointSize = "sm" | "md" | "lg" | "xl";
 
-interface DeviceCapabilities {
+export interface DeviceCapabilities {
   isTouchDevice: boolean;
   hasHover: boolean;
   hasMouseSupport: boolean;

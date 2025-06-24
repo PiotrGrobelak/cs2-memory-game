@@ -1,4 +1,4 @@
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useDeviceDetection } from "./device";
 import { useCanvasState } from "./canvas/useCanvasState";
 import { useResponsiveGrid } from "./canvas/useResponsiveGrid";
@@ -18,11 +18,8 @@ import type { Application } from "pixi.js";
  * - Pixi grid rendering
  *
  */
-export const useEngineCore = (
-  config: PixiResponsiveConfig,
-  app?: Application | null
-) => {
-  // Device detection
+export const useEngineCore = (config: PixiResponsiveConfig) => {
+  // Device detection - called once during component setup
   const {
     deviceType,
     deviceOrientation,
@@ -35,8 +32,17 @@ export const useEngineCore = (
   // Canvas state management
   const canvasState = useCanvasState(config);
 
-  // Grid rendering (only if app is provided)
-  const pixiGrid = app ? useResponsiveGrid(app) : null;
+  // Reactive reference to pixi app and grid
+  const pixiApp = ref<Application | null>(null);
+  let pixiGrid: ReturnType<typeof useResponsiveGrid> | null = null;
+
+  /**
+   * Initialize Pixi application and grid rendering
+   */
+  const initializePixiApp = (app: Application) => {
+    pixiApp.value = app;
+    pixiGrid = useResponsiveGrid(app);
+  };
 
   // Device Settings Configuration
   const DEVICE_SETTINGS = {
@@ -179,9 +185,9 @@ export const useEngineCore = (
 
   const destroy = () => {
     canvasState.destroy();
-    if (pixiGrid) {
-      pixiGrid.destroy();
-    }
+    pixiGrid?.destroy();
+    pixiGrid = null;
+    pixiApp.value = null;
   };
 
   return {
@@ -205,6 +211,7 @@ export const useEngineCore = (
     renderCards,
     updateCanvasDimensions,
     initializeFromElement,
+    initializePixiApp,
     validateLayout,
     destroy,
 
@@ -214,9 +221,11 @@ export const useEngineCore = (
 
     // Direct access to sub-composables for advanced usage
     canvasState,
-    pixiGrid,
+    get pixiGrid() {
+      return pixiGrid;
+    },
 
     // Pixi-specific methods (if grid available)
-    getCardsContainer: pixiGrid?.getCardsContainer || (() => null),
+    getCardsContainer: () => pixiGrid?.getCardsContainer() || null,
   };
 };
