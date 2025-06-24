@@ -32,6 +32,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import GameStatCard from "./GameStatCard.vue";
+import { useTimeFormatting } from "~/composables/utils/useTimeFormatting";
 
 interface Stats {
   moves: number;
@@ -46,18 +47,10 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const { formatGameTime } = useTimeFormatting();
 
 const formattedTime = computed(() => {
-  const totalSeconds = Math.floor(props.timeElapsed / 1000);
-
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-  } else {
-    return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-  }
+  // timeElapsed is now in seconds from core store, convert to ms for display
+  return formatGameTime(props.timeElapsed * 1000);
 });
 </script>

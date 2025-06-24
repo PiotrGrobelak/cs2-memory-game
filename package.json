@@ -33,6 +33,7 @@
     "@tailwindcss/cli": "^4.1.10",
     "@tailwindcss/postcss": "^4.1.10",
     "@vueuse/nuxt": "^13.4.0",
+    "date-fns": "^4.1.0",
     "eslint": "^9.29.0",
     "nuxt": "^3.17.5",
     "pinia": "^3.0.3",

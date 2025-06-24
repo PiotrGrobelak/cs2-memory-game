@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
+import { useTimeFormatting } from "~/composables/utils/useTimeFormatting";
 
 export const useGameTimerStore = defineStore("game-timer", () => {
   // State
@@ -8,16 +9,15 @@ export const useGameTimerStore = defineStore("game-timer", () => {
   const isRunning = ref(false);
   const intervalId = ref<number | null>(null);
 
+  // Time formatting composable
+  const { formatGameTime, msToSeconds } = useTimeFormatting();
+
   // Getters (computed)
   const formattedTime = computed(() => {
-    const seconds = Math.floor(timeElapsed.value / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-
-    return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
+    return formatGameTime(timeElapsed.value);
   });
 
-  const timeInSeconds = computed(() => Math.floor(timeElapsed.value / 1000));
+  const timeInSeconds = computed(() => msToSeconds(timeElapsed.value));
 
   // Actions
   const startTimer = (): void => {

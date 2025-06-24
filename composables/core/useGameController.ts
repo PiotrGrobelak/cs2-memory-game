@@ -29,6 +29,7 @@ import { useCS2Data } from "~/composables/data/useCS2Data";
 import { useGamePersistence } from "~/composables/data/useGamePersistence";
 
 import { useGameSounds } from "~/composables/audio/useGameSounds";
+import { useTimeFormatting } from "~/composables/utils/useTimeFormatting";
 
 export interface GameControlV2State {
   isLoading: boolean;
@@ -50,6 +51,7 @@ export const useGameController = () => {
     saveGameResult,
   } = useGamePersistence();
   const gameSounds = useGameSounds();
+  const { formatGameTime } = useTimeFormatting();
 
   const uiStore = useGameUIStore();
   const coreStore = useGameCoreStore();
@@ -73,7 +75,7 @@ export const useGameController = () => {
       cards: cardsStore.cards,
       stats: {
         ...coreStore.stats,
-        timeElapsed: timerStore.timeElapsed, // Use actual timer value
+        timeElapsed: Math.floor(timerStore.timeElapsed / 1000), // Convert to seconds
       },
       startTime: timerStore.startTime,
       isPlaying: coreStore.isPlaying,
@@ -565,9 +567,8 @@ export const useGameController = () => {
           const timeElapsed = coreStore.stats.timeElapsed;
           const moves = coreStore.stats.moves;
 
-          const minutes = Math.floor(timeElapsed / 60);
-          const seconds = Math.floor(timeElapsed % 60);
-          const formattedTime = `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+          // timeElapsed is in seconds, convert to ms for formatGameTime
+          const formattedTime = formatGameTime(timeElapsed * 1000);
 
           toast.add({
             severity: "success",
@@ -608,7 +609,9 @@ export const useGameController = () => {
     watch(
       () => timerStore.timeElapsed,
       (newTimeElapsed) => {
-        coreStore.updateTimeElapsed(newTimeElapsed);
+        // Convert milliseconds to seconds for core store
+        const timeInSeconds = Math.floor(newTimeElapsed / 1000);
+        coreStore.updateTimeElapsed(timeInSeconds);
       }
     );
 

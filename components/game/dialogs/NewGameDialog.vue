@@ -84,7 +84,7 @@
 
         <!-- Seed History -->
         <div v-if="seedOption === 'history'" class="mt-3">
-          <Dropdown
+          <Select
             v-model="selectedHistorySeed"
             :options="seedHistory"
             placeholder="Select from history"
@@ -123,7 +123,7 @@ import Dialog from "primevue/dialog";
 import Button from "primevue/button";
 import InputText from "primevue/inputtext";
 import RadioButton from "primevue/radiobutton";
-import Dropdown from "primevue/dropdown";
+import Select from "primevue/select";
 
 interface Difficulty {
   name: "easy" | "medium" | "hard";
