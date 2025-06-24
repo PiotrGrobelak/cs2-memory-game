@@ -45,6 +45,12 @@ For detailed information, see the [documentation](./docs/):
 **Testing:** Vitest, Playwright  
 **Storage:** localStorage with CS2 API integration
 
+## 🔧 Remaining Work
+
+- 🎯 Grid layout optimizations
+- ⚡ Fix unnecessary component rerenders
+- 🧪 Expand test coverage
+
 ## 📄 License
 
 License information will be added upon project completion.
