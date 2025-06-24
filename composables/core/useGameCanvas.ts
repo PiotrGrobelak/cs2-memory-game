@@ -1,5 +1,25 @@
 import { ref, computed, watch, nextTick } from "vue";
-import type { GridLayout } from "~/composables/engine/useAdaptiveGridLayout";
+import type { GridLayout } from "~/composables/engine/layout/adaptiveGridLayout";
+
+/**
+ * useGameCanvas - Canvas Management Composable for CS2 Memory Game
+ *
+ * This composable provides comprehensive canvas lifecycle management and error handling:
+ * - Canvas initialization and state management
+ * - Error recovery with progressive degradation
+ * - Performance monitoring and health checks
+ * - Layout management and responsive updates
+ * - Graceful fallback mechanisms for different device capabilities
+ * - Auto-recovery with exponential backoff strategies
+ *
+ * Key features:
+ * - Robust error handling with classification and recovery strategies
+ * - Performance metrics tracking and health monitoring
+ * - Progressive enhancement based on device capabilities
+ * - Automatic canvas regeneration and state recovery
+ * - Integration with game layout system for responsive design
+ * - Memory management and resource cleanup
+ */
 
 interface CanvasError {
   type: "initialization" | "rendering" | "memory" | "critical";
@@ -29,12 +49,10 @@ export const useGameCanvas = () => {
     errorCount: 0,
   });
 
-  // Progressive enhancement flags
   const hasWebGL = ref(true);
   const hasFallbackCanvas = ref(false);
   const degradationLevel = ref<"none" | "reduced" | "minimal">("none");
 
-  // Recovery configuration
   const RECOVERY_CONFIG = {
     MAX_RETRIES: 3,
     RETRY_DELAYS: [1000, 2000, 5000], // Progressive delays
@@ -42,7 +60,6 @@ export const useGameCanvas = () => {
     MEMORY_THRESHOLD: 100, // MB
   } as const;
 
-  // Error classification and handling
   const createError = (
     type: CanvasError["type"],
     message: string,
@@ -119,11 +136,6 @@ export const useGameCanvas = () => {
     isCanvasReady.value = true;
     canvasError.value = null;
     degradationLevel.value = "none"; // Reset degradation on successful init
-
-    console.log("✅ Canvas ready with performance:", {
-      initTime: performanceMetrics.value.initTime,
-      degradationLevel: degradationLevel.value,
-    });
   };
 
   const handleCanvasError = async (error?: string | Error | unknown) => {
@@ -227,14 +239,12 @@ export const useGameCanvas = () => {
     }
   };
 
-  // Auto-recovery watcher with exponential backoff
   watch(canvasError, (error) => {
     if (error) {
       applyGracefulDegradation();
     }
   });
 
-  // Health check for long-running canvas
   const healthCheck = () => {
     const report = getPerformanceReport.value;
 
@@ -247,7 +257,6 @@ export const useGameCanvas = () => {
     }
   };
 
-  // Periodic health monitoring
   let healthCheckInterval: number | undefined;
   const startHealthMonitoring = () => {
     healthCheckInterval = window.setInterval(healthCheck, 30000); // Every 30 seconds
@@ -260,7 +269,6 @@ export const useGameCanvas = () => {
     }
   };
 
-  // Manual recovery function for user-triggered retries
   const manualRecover = async () => {
     if (canvasError.value) {
       canvasError.value.retryCount = 0; // Reset retry count

@@ -6,12 +6,10 @@ interface LoadingStep {
 }
 
 export const useGameLoader = () => {
-  // State
   const isLoading = ref(true);
   const loadingMessage = ref("Initializing...");
   const loadingProgress = ref(0);
 
-  // Loading steps configuration
   const loadingSteps: LoadingStep[] = [
     { message: "Initializing game engine...", duration: 500 },
     { message: "Loading CS2 item database...", duration: 800 },
@@ -20,7 +18,6 @@ export const useGameLoader = () => {
     { message: "Ready to play!", duration: 300 },
   ];
 
-  // Methods
   const simulateLoading = async (): Promise<void> => {
     let progress = 0;
     const progressStep = 100 / loadingSteps.length;

@@ -1,6 +1,6 @@
 import { ref, computed, onUnmounted } from "vue";
 import type { Container, Sprite, FederatedPointerEvent } from "pixi.js";
-import { useDeviceDetection } from "~/composables/device/useDeviceDetection";
+import { useDeviceDetection } from "~/composables/engine/device";
 
 export interface ParallaxTarget {
   sprite: Container | Sprite;
@@ -18,7 +18,6 @@ export interface ParallaxState {
 export const useParallaxEffect = () => {
   const { deviceType, isTouchDevice } = useDeviceDetection();
 
-  // State
   const parallaxTargets = ref<Map<string, ParallaxTarget>>(new Map());
   const parallaxState = ref<ParallaxState>({
     enabled: true,
@@ -32,7 +31,6 @@ export const useParallaxEffect = () => {
     gamma: 0, // Y-axis rotation (tilt left/right)
   });
 
-  // Computed properties
   const isDesktop = computed(() => deviceType.value === "desktop");
   const isMobile = computed(() => deviceType.value === "mobile");
   const shouldUseMouseParallax = computed(
@@ -42,7 +40,6 @@ export const useParallaxEffect = () => {
     () => isMobile.value && isTouchDevice.value
   );
 
-  // Methods
   const initializeParallax = () => {
     if (shouldUseOrientationParallax.value) {
       setupOrientationParallax();
@@ -303,6 +300,8 @@ export const useParallaxEffect = () => {
 
     const handleTouchStart = () => {
       // Touch started - prepare for parallax
+      // TODO - add parallax effect here
+      console.log("👆 Touch started - prepare for parallax");
     };
 
     const handleTouchEnd = () => {

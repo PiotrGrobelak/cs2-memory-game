@@ -35,8 +35,8 @@ import GameCanvas from "./GameCanvas.vue";
 import FallbackCardGrid from "./FallbackCardGrid.vue";
 import GameLoadingState from "./GameLoadingState.vue";
 import GameEmptyState from "./GameEmptyState.vue";
-import type { GameCard, DifficultyLevel, GameStatus } from "~/types/game";
-import type { GridLayout } from "~/composables/engine/useAdaptiveGridLayout";
+import type { GameCard, GameStatus } from "~/types/game";
+import type { GridLayout } from "~/composables/engine/layout/adaptiveGridLayout";
 
 interface Props {
   showFallback: boolean;

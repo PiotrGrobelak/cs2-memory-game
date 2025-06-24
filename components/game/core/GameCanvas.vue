@@ -19,7 +19,6 @@
     <DebugOverlay
       :is-visible="isDev"
       :current-layout="currentLayout"
-      :strategy-name="getCurrentStrategy?.name"
       :device-type="deviceType"
       :device-orientation="deviceOrientation"
       :canvas-width="canvasWidth"
@@ -41,15 +40,14 @@ import {
   nextTick,
   defineAsyncComponent,
 } from "vue";
-import type { Container } from "pixi.js";
+import { Application, type Container } from "pixi.js";
 import type { GameCard, GameStatus } from "~/types/game";
-import { usePixiResponsiveCanvas } from "~/composables/engine/usePixiResponsiveCanvas/usePixiResponsiveCanvas";
-import { useTextureLoader } from "~/composables/engine/useTextureLoader";
-import { useParallaxEffect } from "~/composables/engine/useParallaxEffect";
-import { useCardRenderer } from "~/composables/engine/useCardRenderer";
-import type { GridLayout } from "~/composables/engine/useAdaptiveGridLayout";
+import { useEngineCore } from "~/composables/engine";
+import { useTextureLoader } from "~/composables/engine/canvas/useTextureLoader";
+import { useParallaxEffect } from "~/composables/engine/canvas/useParallaxEffect";
+import { useCardRenderer } from "~/composables/engine/canvas/useCardRenderer";
+import type { GridLayout } from "~/composables/engine/layout/adaptiveGridLayout";
 
-// Lazy-loaded overlay components for better performance
 const LoadingOverlay = defineAsyncComponent(
   () => import("~/components/game/ui/overlays/LoadingOverlay.vue")
 );
@@ -92,30 +90,39 @@ const error = ref<string | null>(null);
 const cardSprites = shallowRef<Map<string, Container>>(new Map());
 const cardCleanupFunctions = shallowRef<Map<string, () => void>>(new Map());
 const isInitialized = ref(false);
+const pixiApp = shallowRef<Application | null>(null);
 
-const {
-  initializePixiApp,
-  renderCards: updateGrid,
-  getCardsContainer,
-  destroy: destroyPixi,
-  containerWidth: canvasWidth,
-  containerHeight: canvasHeight,
-  initializeContainerDimensions,
-  isReady,
-  deviceType,
-  deviceOrientation,
-  isResizing,
-  isLoading,
-  isOrientationChanging,
-  currentLayout,
-  getCurrentStrategy,
-} = usePixiResponsiveCanvas(canvasContainer, {
+// Initialize engine for device detection and state management
+const baseEngine = useEngineCore({
   enableAutoResize: true,
   resizeThrottleMs: 150,
   backgroundAlpha: 0,
   minWidth: 320,
   minHeight: 240,
+  padding: 20,
+  maintainAspectRatio: true,
 });
+
+// Engine with pixi app (will be set after initialization)
+let renderEngine: ReturnType<typeof useEngineCore> | null = null;
+
+// Extract properties from base engine
+const {
+  deviceType,
+  deviceOrientation,
+  containerDimensions,
+  updateCanvasDimensions,
+  initializeFromElement,
+  isLoading,
+  isResizing,
+  currentLayout,
+} = baseEngine;
+
+// Computed properties for backward compatibility
+const canvasWidth = computed(() => containerDimensions.value.width);
+const canvasHeight = computed(() => containerDimensions.value.height);
+const isOrientationChanging = computed(() => false);
+const isReady = computed(() => !!pixiApp.value && !!renderEngine);
 
 const { getTexture, preloadCardTextures } = useTextureLoader();
 const parallaxEffect = useParallaxEffect();
@@ -129,11 +136,32 @@ const initializeCanvas = async () => {
     error.value = null;
     emit("loading-state-changed", true);
 
-    canvasHeight.value = props.containerHeight;
-    canvasWidth.value = props.containerWidth;
-    initializeContainerDimensions();
+    // Update canvas dimensions using the base engine
+    updateCanvasDimensions(props.containerWidth, props.containerHeight);
+    initializeFromElement(canvasContainer.value);
 
-    await initializePixiApp();
+    const app = await initializePixiApp();
+
+    // Create render engine with pixi app
+    renderEngine = useEngineCore(
+      {
+        enableAutoResize: true,
+        resizeThrottleMs: 150,
+        backgroundAlpha: 0,
+        minWidth: 320,
+        minHeight: 240,
+        padding: 20,
+        maintainAspectRatio: true,
+      },
+      app
+    );
+
+    // Update render engine with current container dimensions
+    renderEngine.updateCanvasDimensions(
+      props.containerWidth,
+      props.containerHeight
+    );
+    renderEngine.initializeFromElement(canvasContainer.value);
 
     parallaxEffect.initializeParallax();
 
@@ -156,11 +184,41 @@ const initializeCanvas = async () => {
   }
 };
 
+const initializePixiApp = async (): Promise<Application> => {
+  if (!canvasContainer.value) {
+    throw new Error("Canvas container not available");
+  }
+
+  const { width, height } = containerDimensions.value;
+
+  if (width === 0 || height === 0) {
+    throw new Error(
+      "Container dimensions not available. Please ensure the container has proper width and height."
+    );
+  }
+
+  const app = new Application();
+
+  await app.init({
+    width,
+    height,
+    backgroundAlpha: 0,
+    antialias: true,
+    resolution: 1,
+    resizeTo: canvasContainer.value,
+  });
+
+  canvasContainer.value.appendChild(app.canvas);
+  pixiApp.value = app;
+
+  return app;
+};
+
 const renderCards = async () => {
-  if (!isReady.value || props.cards.length === 0) return;
+  if (!isReady.value || props.cards.length === 0 || !renderEngine) return;
 
   try {
-    const cardsContainer = getCardsContainer();
+    const cardsContainer = renderEngine.getCardsContainer();
     if (!cardsContainer) return;
 
     cleanupCardListeners();
@@ -169,7 +227,7 @@ const renderCards = async () => {
 
     await preloadCardTextures(props.cards);
 
-    const layout = updateGrid(props.cards);
+    const layout = renderEngine.renderCards(props.cards);
     if (!layout) return;
 
     emit("layout-changed", layout);
@@ -191,7 +249,6 @@ const renderCards = async () => {
           cardsContainer.addChild(cardContainer);
           cardSprites.value.set(card.id, cardContainer);
 
-          // Setup parallax effect
           const parallaxDepth = 0.4 + Math.random() * 0.3;
           parallaxEffect.addParallaxTarget(
             card.id,
@@ -199,7 +256,6 @@ const renderCards = async () => {
             parallaxDepth
           );
 
-          // Setup event listeners
           const cleanupFn = parallaxEffect.setupCardEventListeners(
             card.id,
             cardContainer
@@ -214,7 +270,7 @@ const renderCards = async () => {
     if (isDev.value) {
       console.log("🎯 Optimized card rendering completed:", {
         cardCount: props.cards.length,
-        layoutStrategy: getCurrentStrategy.value?.name,
+        deviceType: deviceType.value,
         efficiency: Math.round(layout.efficiency * 100) + "%",
       });
     }
@@ -253,7 +309,10 @@ const cleanupCardListeners = () => {
 
 const cleanup = () => {
   cleanupCardListeners();
-  destroyPixi();
+  baseEngine.destroy();
+  if (renderEngine) {
+    renderEngine.destroy();
+  }
   isInitialized.value = false;
 };
 

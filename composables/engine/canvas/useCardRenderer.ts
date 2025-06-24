@@ -8,13 +8,11 @@ import {
 } from "pixi.js";
 import { computed, ref } from "vue";
 import type { GameCard } from "~/types/game";
-import { useDeviceDetection } from "~/composables/device/useDeviceDetection";
+import { useDeviceDetection } from "~/composables/engine/device";
 
 export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
-  // Import device detection for mobile optimization
   const { deviceType, deviceCapabilities } = useDeviceDetection();
 
-  // Simplified cache for card dimensions and rarity configurations
   const rarityConfigCache = ref<
     Map<string, { color: number; alpha: number; borderWidth: number }>
   >(new Map());
@@ -191,24 +189,18 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
         width: 3,
       });
 
-    // Event handlers will be added to the container, not individual cardBack
-
-    // Create a single interactive card back container
     const cardBackContainer = new Container();
     cardBackContainer.interactive = isInteractive;
     cardBackContainer.cursor = "pointer";
 
-    // Add card background to container
     cardBack.interactive = false; // Disable individual interaction - container handles it
     cardBackContainer.addChild(cardBack);
 
-    // Add CS2 logo to the same container
     try {
       const logoTexture = (await getTexture("/cs2-logo.svg")) as Texture;
       if (logoTexture && logoTexture.width && logoTexture.height) {
         const logoSprite = new Sprite(logoTexture);
 
-        // Calculate scale to fit logo nicely on the card back
         const maxLogoWidth = cardWidth * 0.6;
         const maxLogoHeight = cardHeight * 0.3;
         const logoScaleX = maxLogoWidth / logoTexture.width;
@@ -218,13 +210,13 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
         logoSprite.scale.set(logoScale);
         logoSprite.anchor.set(0.5);
         logoSprite.position.set(0, 0);
-        logoSprite.tint = 0xffffff; // White tint for visibility on blue background
-        logoSprite.interactive = false; // Not interactive - container handles it
+        logoSprite.tint = 0xffffff;
+        logoSprite.interactive = false;
 
         cardBackContainer.addChild(logoSprite);
       } else {
         console.warn("Failed to load CS2 logo, using fallback question mark");
-        // Fallback to question mark if logo fails to load
+        // TODO - add a fallback image here is twice times
         const questionMark = new Graphics()
           .roundRect(-3, -15, 6, 20, 3)
           .fill(0xffffff)
@@ -241,7 +233,7 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
         "Failed to load CS2 logo, using fallback question mark:",
         err
       );
-      // Fallback to question mark if logo fails to load
+      // TODO - add a fallback image here is twice times
       const questionMark = new Graphics()
         .roundRect(-3, -15, 6, 20, 3)
         .fill(0xffffff)
@@ -254,7 +246,6 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
       cardBackContainer.addChild(questionMark);
     }
 
-    // Add event handlers to the container
     cardBackContainer.on("click", () => onCardClick(card.id));
     cardBackContainer.on("tap", () => onCardClick(card.id));
 
@@ -305,7 +296,6 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
 
     elements.push(cardFront);
 
-    // Add weapon image if available - optimized texture loading
     if (card.cs2Item?.imageUrl) {
       try {
         const texture = (await getTexture(card.cs2Item.imageUrl)) as Texture;
@@ -322,12 +312,10 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
           weaponSprite.scale.set(scale);
           weaponSprite.anchor.set(0.5);
 
-          // Optimize positioning for mobile devices
           const isMobileDevice = deviceType.value === "mobile";
-          const verticalOffset = isMobileDevice ? -5 : -10; // Less offset on mobile for more space
+          const verticalOffset = isMobileDevice ? -5 : -10;
           weaponSprite.position.set(0, verticalOffset);
 
-          // Improve image quality for high-DPI mobile screens
           if (isMobileDevice && deviceCapabilities.value.pixelRatio > 1.5) {
             // Ensure crisp rendering on high-DPI displays
             weaponSprite.roundPixels = true;
@@ -357,7 +345,6 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
       }
     }
 
-    // Add weapon name text
     if (card.cs2Item?.name) {
       const weaponNameText = createWeaponNameText(
         card.cs2Item.name,
@@ -365,14 +352,12 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
         isMatched
       );
 
-      // Optimize text positioning for mobile devices
       const isMobileDevice = deviceType.value === "mobile";
       const textVerticalPosition = isMobileDevice
         ? cardHeight * 0.35
         : cardHeight * 0.3;
       weaponNameText.position.set(0, textVerticalPosition);
 
-      // Improve text rendering quality on high-DPI mobile screens
       if (isMobileDevice && deviceCapabilities.value.pixelRatio > 1.5) {
         weaponNameText.roundPixels = true;
       }

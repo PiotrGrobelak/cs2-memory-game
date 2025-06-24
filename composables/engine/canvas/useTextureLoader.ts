@@ -35,13 +35,6 @@ export const useTextureLoader = () => {
   const loadingProgress = ref({ loaded: 0, total: 0 });
   const failedTextures = ref<Set<string>>(new Set());
 
-  /**
-   * Extract unique image URLs from game cards with deduplication
-   * Filters out previously failed textures to avoid unnecessary retry attempts
-   *
-   * @param cards - Array of game cards to extract URLs from
-   * @returns Array of unique, non-failed image URLs
-   */
   const extractImageUrls = (cards: GameCard[]): string[] => {
     const uniqueUrls = new Set<string>();
     cards.forEach((card) => {
@@ -55,15 +48,6 @@ export const useTextureLoader = () => {
     return Array.from(uniqueUrls);
   };
 
-  /**
-   * Load a batch of textures with retry logic and error handling
-   * Implements sophisticated error recovery with exponential backoff
-   *
-   * @param urls - Array of image URLs to load
-   * @param onProgress - Optional progress callback
-   * @param retryAttempt - Current retry attempt number
-   * @returns Promise resolving to load results with successful and failed URLs
-   */
   const loadTextureBatch = async (
     urls: string[],
     onProgress?: (loaded: number, total: number) => void,
@@ -122,21 +106,6 @@ export const useTextureLoader = () => {
     return { successful, failed };
   };
 
-  /**
-   * Preload textures for an array of game cards with optimized batching
-   * Main entry point for texture preloading with comprehensive progress tracking
-   *
-   * @param cards - Array of game cards to preload textures for
-   * @param onProgress - Optional callback to track loading progress
-   * @returns Promise that resolves when all textures are loaded or failed
-   *
-   * @example
-   * ```typescript
-   * await preloadCardTextures(gameCards, (loaded, total) => {
-   *   console.log(`Loading progress: ${Math.round(loaded/total*100)}%`);
-   * });
-   * ```
-   */
   const preloadCardTextures = async (
     cards: GameCard[],
     onProgress?: (loaded: number, total: number) => void
@@ -158,7 +127,6 @@ export const useTextureLoader = () => {
     loadingProgress.value = { loaded: 0, total: imageUrls.length };
     onProgress?.(0, imageUrls.length);
 
-    // Split URLs into batches
     const batches: string[][] = [];
     for (let i = 0; i < imageUrls.length; i += BATCH_CONFIG.BATCH_SIZE) {
       batches.push(imageUrls.slice(i, i + BATCH_CONFIG.BATCH_SIZE));
@@ -166,7 +134,6 @@ export const useTextureLoader = () => {
 
     let totalLoaded = 0;
 
-    // Process batches with concurrency control
     const processBatch = async (batch: string[]) => {
       const result = await loadTextureBatch(batch, onProgress);
       totalLoaded += result.successful.length + result.failed.length;
@@ -180,7 +147,6 @@ export const useTextureLoader = () => {
       return result;
     };
 
-    // Process batches in controlled concurrency
     const batchResults: { successful: string[]; failed: string[] }[] = [];
     for (let i = 0; i < batches.length; i += BATCH_CONFIG.CONCURRENT_BATCHES) {
       const currentBatches = batches.slice(
@@ -208,13 +174,7 @@ export const useTextureLoader = () => {
     );
   };
 
-  /**
-   * Retrieve a cached texture by URL, loading it if not cached
-   * @param imageUrl - URL of the texture to retrieve
-   * @returns Cached texture or loads and returns new texture
-   */
   const getTexture = async (imageUrl: string) => {
-    // Return cached texture if available
     if (textureCache.value.has(imageUrl)) {
       return textureCache.value.get(imageUrl);
     }
@@ -234,36 +194,14 @@ export const useTextureLoader = () => {
     return undefined;
   };
 
-  /**
-   * Retrieve a cached texture by URL (synchronous version)
-   * @param imageUrl - URL of the texture to retrieve
-   * @returns Cached texture or undefined if not found
-   */
   const getCachedTexture = (imageUrl: string) => {
     return textureCache.value.get(imageUrl);
   };
 
-  /**
-   * Check if a texture is cached
-   * @param imageUrl - URL to check
-   * @returns True if texture is cached
-   */
   const hasTexture = (imageUrl: string): boolean => {
     return textureCache.value.has(imageUrl);
   };
 
-  /**
-   * Enhanced texture cache clearing with selective preservation
-   * Supports memory management by optionally preserving most recent textures
-   *
-   * @param preserveCount - Number of most recent textures to preserve (0 = clear all)
-   *
-   * @example
-   * ```typescript
-   * clearTextureCache(10); // Keep 10 most recent textures
-   * clearTextureCache();   // Clear everything
-   * ```
-   */
   const clearTextureCache = (preserveCount = 0): void => {
     console.log(
       "🧹 Clearing texture cache",
@@ -333,10 +271,6 @@ export const useTextureLoader = () => {
     failedTextures.value.clear();
   };
 
-  /**
-   * Get comprehensive loading statistics and performance metrics
-   * Provides detailed insights into cache performance and memory usage
-   */
   const getLoadingStats = computed(() => ({
     isLoading: isLoading.value,
     progress: loadingProgress.value,
@@ -353,10 +287,6 @@ export const useTextureLoader = () => {
     memoryEstimate: `~${Math.round(textureCache.value.size * 0.1)}MB`, // Rough estimate
   }));
 
-  /**
-   * Optimize memory usage by clearing old textures when cache grows too large
-   * Automatically triggered based on cache size thresholds
-   */
   const optimizeMemoryUsage = () => {
     const maxCacheSize = 50; // Maximum textures to keep
     if (textureCache.value.size > maxCacheSize) {

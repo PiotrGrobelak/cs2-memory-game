@@ -20,17 +20,14 @@ import { ref, computed, watch, nextTick, onUnmounted } from "vue";
 import type { GameOptions, GameResult } from "~/types/game";
 import { useToast } from "primevue/usetoast";
 
-// Stores - Direct usage like GameInterface.vue
 import { useGameUIStore } from "~/stores/game/ui";
 import { useGameCoreStore } from "~/stores/game/core";
 import { useGameCardsStore } from "~/stores/game/cards";
 import { useGameTimerStore } from "~/stores/game/timer";
 
-// Data composables
 import { useCS2Data } from "~/composables/data/useCS2Data";
 import { useGamePersistence } from "~/composables/data/useGamePersistence";
 
-// Audio
 import { useGameSounds } from "~/composables/audio/useGameSounds";
 
 export interface GameControlV2State {
@@ -43,7 +40,6 @@ export interface GameControlV2State {
 }
 
 export const useGameController = () => {
-  // Initialize composables
   const toast = useToast();
   const { initializeData } = useCS2Data();
   const {
@@ -55,13 +51,11 @@ export const useGameController = () => {
   } = useGamePersistence();
   const gameSounds = useGameSounds();
 
-  // Initialize stores
   const uiStore = useGameUIStore();
   const coreStore = useGameCoreStore();
   const cardsStore = useGameCardsStore();
   const timerStore = useGameTimerStore();
 
-  // Local state
   const state = ref<GameControlV2State>({
     isLoading: false,
     showFallbackUI: false,
@@ -71,7 +65,6 @@ export const useGameController = () => {
     hasUnfinishedGame: false,
   });
 
-  // Build complete game state for persistence - declare early for lifecycle hooks
   const buildCurrentGameState = () => {
     return {
       id: `${coreStore.seed}-${coreStore.difficulty.name}`,
@@ -89,12 +82,10 @@ export const useGameController = () => {
     };
   };
 
-  // Auto-save functionality for US-013 - declare early for lifecycle hooks
   const autoSaveGameState = async () => {
     console.log("🔄 Auto-saving game state");
     if (!state.value.autoSaveEnabled || state.value.isLoading) return;
 
-    // Only save if game is active and has content
     if (cardsStore.cards.length === 0) return;
 
     try {
@@ -138,7 +129,7 @@ export const useGameController = () => {
     });
   }
 
-  // Difficulty configurations
+  // TODO - one source of truth for difficulties!
   const difficulties = computed(() => [
     {
       name: "easy" as const,
@@ -160,7 +151,6 @@ export const useGameController = () => {
     },
   ]);
 
-  // Computed properties - Direct from stores
   const gameStatus = computed(() => {
     if (state.value.isLoading) return "initializing";
     if (!coreStore.isPlaying && cardsStore.cards.length === 0) return "ready";
@@ -183,12 +173,10 @@ export const useGameController = () => {
     () => !state.value.isLoading && cardsStore.cards.length > 0
   );
 
-  // New computed - check if there's an active game that can be resumed
   const canResumeGame = computed(() => {
     return state.value.hasUnfinishedGame && !state.value.isLoading;
   });
 
-  // Seed validator
   const seedValidator = (seed: string) => {
     if (!seed.trim()) {
       return { isValid: false, error: "Seed cannot be empty" };
@@ -202,7 +190,6 @@ export const useGameController = () => {
     return { isValid: true, error: null };
   };
 
-  // Restore game state from persistence
   const restoreGameState = async (): Promise<boolean> => {
     try {
       state.value.isLoading = true;
@@ -216,12 +203,10 @@ export const useGameController = () => {
 
       console.log("🔄 Restoring game state...", savedState);
 
-      // Restore core state
       coreStore.seed = savedState.seed;
       coreStore.difficulty = savedState.difficulty;
       coreStore.isPlaying = savedState.isPlaying;
 
-      // If the saved game wasn't playing, it should be in paused state
       if (
         !savedState.isPlaying &&
         savedState.cards &&
@@ -232,7 +217,6 @@ export const useGameController = () => {
 
       coreStore.restoreStats(savedState.stats);
 
-      // Restore cards state
       console.log("🔄 Restoring cards...", {
         savedCardsCount: savedState.cards?.length || 0,
         currentCardsCount: cardsStore.cards.length,
@@ -245,13 +229,10 @@ export const useGameController = () => {
         firstCard: cardsStore.cards[0]?.id || "none",
       });
 
-      // Restore timer state - critical for US-013
       timerStore.restoreTimer(savedState.stats.timeElapsed);
 
-      // Initialize CS2 data if needed
       await initializeData(100);
 
-      // Don't clear hasUnfinishedGame here - let the UI handle the state properly
       console.log("✅ Game state restored successfully");
 
       toast.add({
@@ -264,7 +245,6 @@ export const useGameController = () => {
       return true;
     } catch (error) {
       console.error("❌ Failed to restore game state:", error);
-      // Clear corrupted save data
       await deleteGameState();
       state.value.hasUnfinishedGame = false;
 
@@ -281,7 +261,6 @@ export const useGameController = () => {
     }
   };
 
-  // Check for unfinished games on initialization
   const checkForUnfinishedGame = async () => {
     try {
       const savedState = await loadGameState();
@@ -312,7 +291,6 @@ export const useGameController = () => {
     }
   };
 
-  // Resume unfinished game
   const resumeUnfinishedGame = async (): Promise<boolean> => {
     if (!state.value.hasUnfinishedGame) return false;
 
@@ -342,7 +320,6 @@ export const useGameController = () => {
     return success;
   };
 
-  // Clear unfinished game data
   const clearUnfinishedGame = async () => {
     try {
       await deleteGameState();
@@ -353,25 +330,19 @@ export const useGameController = () => {
     }
   };
 
-  // Game initialization - Simplified like GameInterface.vue
   const initializeGame = async (options: Partial<GameOptions> = {}) => {
     try {
       state.value.isLoading = true;
 
-      // Reset timer first
       timerStore.resetTimer();
 
-      // Initialize core game settings
       await coreStore.initializeGame(options);
 
-      // Load CS2 data - simple like weapon.vue
       const difficulty = coreStore.difficulty;
-      await initializeData(100); // Load 100 items like analysis suggests
+      await initializeData(100);
 
-      // Generate cards with Pinia store
       await cardsStore.generateCards(difficulty, coreStore.seed);
 
-      // Clear any existing save data for fresh start
       await deleteGameState();
       state.value.hasUnfinishedGame = false;
 
@@ -392,13 +363,11 @@ export const useGameController = () => {
     }
   };
 
-  // Game actions - Simplified
   const startNewGame = async (options: Partial<GameOptions> = {}) => {
     await initializeGame(options);
     coreStore.startGame();
     timerStore.startTimer();
 
-    // Perform initial auto-save
     await autoSaveGameState();
 
     console.log("🕐 Timer started, isRunning:", timerStore.isRunning);
@@ -408,7 +377,6 @@ export const useGameController = () => {
     coreStore.pauseGame();
     timerStore.pauseTimer();
 
-    // Auto-save when pausing
     await autoSaveGameState();
   };
 
@@ -416,7 +384,6 @@ export const useGameController = () => {
     coreStore.resumeGame();
     timerStore.startTimer();
 
-    // Auto-save when resuming
     await autoSaveGameState();
   };
 
@@ -450,16 +417,13 @@ export const useGameController = () => {
     });
   };
 
-  // Enhanced card interaction with game logic
   const handleCardClick = async (cardId: string) => {
     if (gameStatus.value !== "playing") return;
     console.log(`🎯 Card clicked: ${cardId}`);
 
-    // Execute game logic
     const success = cardsStore.selectCard(cardId);
 
     if (success) {
-      // Play card flip sound
       gameSounds.playCardFlip();
 
       if (cardsStore.selectedCards.length === 2) {
@@ -467,7 +431,6 @@ export const useGameController = () => {
         coreStore.incrementMoves();
 
         if (isMatch) {
-          // Play match sound
           gameSounds.playMatch();
 
           coreStore.incrementMatches();
@@ -482,13 +445,11 @@ export const useGameController = () => {
       }
     }
 
-    // Auto-save after each move (with debouncing)
     setTimeout(async () => {
       await autoSaveGameState();
     }, 500);
   };
 
-  // Game sharing
   const shareGame = async () => {
     try {
       const shareUrl = `${window.location.origin}${window.location.pathname}?seed=${coreStore.seed}&difficulty=${coreStore.difficulty.name}`;
@@ -510,7 +471,6 @@ export const useGameController = () => {
     }
   };
 
-  // Dialog management
   const openDialog = (dialogName: "newGame" | "settings") => {
     uiStore.openDialog(dialogName);
   };
@@ -519,7 +479,6 @@ export const useGameController = () => {
     uiStore.closeDialog(dialogName);
   };
 
-  // Settings handler
   const handleSettingsApply = async (settings: {
     enableSound: boolean;
     enableParallax: boolean;
@@ -532,8 +491,6 @@ export const useGameController = () => {
       if (settings.volume !== undefined) {
         uiStore.updateUIOption("volume", settings.volume);
       }
-
-      // Settings are automatically synced via localStorage - no need to manually update gameSounds
 
       closeDialog("settings");
       toast.add({
@@ -553,7 +510,6 @@ export const useGameController = () => {
     }
   };
 
-  // New game handler
   const handleNewGameStart = async (options: {
     difficulty: "easy" | "medium" | "hard";
     seed?: string;
@@ -578,7 +534,6 @@ export const useGameController = () => {
     }
   };
 
-  // Seed history management
   const loadSeedHistory = async () => {
     try {
       const history = await loadGameHistory();
@@ -591,21 +546,17 @@ export const useGameController = () => {
     }
   };
 
-  // Enhanced initialization with unfinished game check
   const initialize = async () => {
     await nextTick();
     await loadSeedHistory();
     await checkForUnfinishedGame();
 
-    // Don't auto-start game, let user decide
     if (state.value.hasUnfinishedGame) {
       console.log("🎮 Found unfinished game - user can choose to resume");
     }
   };
 
-  // Setup watchers with auto-save integration
   const setupWatchers = () => {
-    // Watch for game completion
     watch(
       () => coreStore.isGameComplete,
       async (isComplete) => {
@@ -627,7 +578,6 @@ export const useGameController = () => {
 
           timerStore.stopTimer();
 
-          // Save completed game to history collection (US-014)
           try {
             const gameResult = {
               id: `${coreStore.seed}-${coreStore.difficulty.name}-${Date.now()}`,
@@ -649,14 +599,12 @@ export const useGameController = () => {
             console.error("❌ Error saving game result:", error);
           }
 
-          // Clear saved game state on completion
           await deleteGameState();
           state.value.hasUnfinishedGame = false;
         }
       }
     );
 
-    // Sync timer store with core store stats
     watch(
       () => timerStore.timeElapsed,
       (newTimeElapsed) => {
@@ -664,7 +612,6 @@ export const useGameController = () => {
       }
     );
 
-    // Auto-save on significant game state changes
     watch(
       () => [coreStore.stats.moves, cardsStore.matchedCards.length],
       async () => {
@@ -675,7 +622,6 @@ export const useGameController = () => {
       { deep: true }
     );
 
-    // Auto-save periodically during active gameplay (every 30 seconds)
     watch(
       () => timerStore.isRunning,
       (isRunning) => {
@@ -718,7 +664,6 @@ export const useGameController = () => {
     playAgain,
     restartGame,
 
-    // US-013 - Resume interrupted game functionality
     restoreGameState,
     resumeUnfinishedGame,
     clearUnfinishedGame,

@@ -24,20 +24,13 @@ import { useGameTimerStore } from "~/stores/game/timer";
 import { useGameSounds } from "~/composables/audio/useGameSounds";
 import type { GameOptions } from "~/types/game";
 
-/**
- * Main game composable that orchestrates all game stores
- * Provides a unified API for components to interact with the game
- */
 export const useGame = () => {
-  // Initialize stores
   const coreStore = useGameCoreStore();
   const cardsStore = useGameCardsStore();
   const timerStore = useGameTimerStore();
 
-  // Initialize audio
   const gameSounds = useGameSounds();
 
-  // Extract reactive refs from stores
   const {
     gameId,
     seed,
@@ -65,18 +58,14 @@ export const useGame = () => {
     timeInSeconds,
   } = storeToRefs(timerStore);
 
-  // Orchestrated actions
   const initializeNewGame = async (options: Partial<GameOptions> = {}) => {
-    // Initialize core game state
     await coreStore.initializeGame(options);
 
-    // Generate cards with the new difficulty and seed (now async)
     await cardsStore.generateCards(
       coreStore.difficultySettings,
       coreStore.seed
     );
 
-    // Reset timer
     timerStore.resetTimer();
   };
 
@@ -98,27 +87,21 @@ export const useGame = () => {
   const selectCard = (cardId: string) => {
     if (!isPlaying.value) return false;
 
-    // Select the card
     const cardSelected = cardsStore.selectCard(cardId);
     if (!cardSelected) return false;
 
-    // Play card flip sound
     gameSounds.playCardFlip();
 
-    // Increment moves in core store
     coreStore.incrementMoves();
 
-    // Check for matches when two cards are selected
     if (selectedCards.value.length === 2) {
       const isMatch = cardsStore.checkForMatch();
 
       if (isMatch) {
-        // Play match sound
         gameSounds.playMatch();
 
         coreStore.incrementMatches();
 
-        // Check if game is complete
         if (stats.value.matchesFound === stats.value.totalPairs) {
           completeGame();
         }
@@ -129,10 +112,8 @@ export const useGame = () => {
   };
 
   const completeGame = () => {
-    // Update core store with final timer value
     coreStore.updateTimeElapsed(timerStore.getCurrentElapsedTime());
 
-    // Complete the game
     coreStore.completeGame();
     timerStore.stopTimer();
   };

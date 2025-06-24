@@ -3,8 +3,12 @@ import type {
   DeviceOrientation,
   GridLayout,
   DeviceType,
-} from "../useAdaptiveGridLayout";
+} from "./layout/adaptiveGridLayout";
 
+/**
+ * Configuration interface for PixiJS responsive canvas
+ * Used by useEngineCore and related composables
+ */
 export interface PixiResponsiveConfig {
   minWidth: number;
   minHeight: number;
@@ -15,6 +19,10 @@ export interface PixiResponsiveConfig {
   backgroundAlpha: number;
 }
 
+/**
+ * Internal state interface for responsive Pixi applications
+ * @deprecated Will be refactored in future versions
+ */
 export interface ResponsivePixiState {
   isResizing: boolean;
   isLoading: boolean;
@@ -27,4 +35,11 @@ export interface ResponsivePixiState {
     isTouch: boolean;
     userAgent?: string;
   };
+}
+
+/**
+ * Engine configuration with optional pixi app
+ */
+export interface EngineConfig extends PixiResponsiveConfig {
+  pixiApp?: Application | null;
 }
