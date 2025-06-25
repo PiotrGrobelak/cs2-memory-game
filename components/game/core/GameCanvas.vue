@@ -2,19 +2,11 @@
   <div
     ref="canvasContainer"
     class="relative w-full h-full flex items-center justify-center rounded-xl overflow-hidden"
-    :class="[{ 'opacity-80': isLoading || isResizing }]"
+    :class="[{ 'opacity-80': isLoading }]"
   >
     <!-- Overlays -->
     <LoadingOverlay :is-visible="isLoading" />
-
-    <ResizeOverlay :is-visible="isResizing && !isLoading" />
-
-    <ResizeOverlay
-      :is-visible="isOrientationChanging"
-      message="Adjusting to orientation..."
-    />
-
-    <ErrorOverlay :error="error" @retry="retryInitialization" />
+    <ErrorOverlay :error="error" @retry="retry" />
 
     <DebugOverlay
       :is-visible="isDev"
@@ -52,9 +44,6 @@ import type { GridLayout } from "~/composables/engine/layout/adaptiveGridLayout"
 const LoadingOverlay = defineAsyncComponent(
   () => import("~/components/game/ui/overlays/LoadingOverlay.vue")
 );
-const ResizeOverlay = defineAsyncComponent(
-  () => import("~/components/game/ui/overlays/ResizeOverlay.vue")
-);
 const ErrorOverlay = defineAsyncComponent(
   () => import("~/components/game/ui/overlays/ErrorOverlay.vue")
 );
@@ -67,18 +56,14 @@ const DebugOverlay = defineAsyncComponent({
 interface Props {
   cards: GameCard[];
   gameStatus: GameStatus;
-  isInteractive: boolean;
   containerWidth: number;
   containerHeight: number;
-  isResizing: boolean;
 }
 
 interface Emits {
   (e: "card-clicked", cardId: string): void;
   (e: "canvas-error", error?: string): void;
   (e: "canvas-ready"): void;
-  (e: "loading-state-changed", isLoading: boolean): void;
-  (e: "layout-changed", layout: GridLayout): void;
 }
 
 const props = defineProps<Props>();
@@ -120,12 +105,13 @@ const canvasWidth = computed(() => containerDimensions.value.width);
 const canvasHeight = computed(() => containerDimensions.value.height);
 const isOrientationChanging = computed(() => false);
 const isReady = computed(() => !!pixiApp.value);
+const isInteractive = computed(() => props.gameStatus === "playing");
 
 const { getTexture, preloadCardTextures } = useTextureLoader();
 const parallaxEffect = useParallaxEffect();
 const { createCardContainer: createCard } = useCardRenderer(getTexture);
 
-const initializeCanvas = async () => {
+const init = async () => {
   if (
     !canvasContainer.value ||
     !props.containerWidth ||
@@ -136,7 +122,6 @@ const initializeCanvas = async () => {
 
   try {
     error.value = null;
-    emit("loading-state-changed", true);
 
     // Update canvas dimensions using the engine
     updateCanvasDimensions(props.containerWidth, props.containerHeight);
@@ -163,8 +148,6 @@ const initializeCanvas = async () => {
     error.value = errorMessage;
     emit("canvas-error", errorMessage);
     console.error("Canvas initialization error:", err);
-  } finally {
-    emit("loading-state-changed", false);
   }
 };
 
@@ -214,7 +197,7 @@ const renderCards = async () => {
     const layout = engineRenderCards(props.cards);
     if (!layout) return;
 
-    emit("layout-changed", layout);
+    // emit("layout-changed", layout);
 
     await Promise.all(
       props.cards.map(async (card, index) => {
@@ -226,7 +209,7 @@ const renderCards = async () => {
           cardPosition,
           layout.cardDimensions.width,
           layout.cardDimensions.height,
-          props.isInteractive,
+          isInteractive.value,
           handleCardClick
         );
         if (cardContainer) {
@@ -268,21 +251,16 @@ const renderCards = async () => {
 };
 
 const handleCardClick = (cardId: string) => {
-  if (
-    !props.isInteractive ||
-    props.gameStatus !== "playing" ||
-    props.isResizing ||
-    isOrientationChanging.value
-  ) {
+  if (!isInteractive.value || isOrientationChanging.value) {
     return;
   }
 
   emit("card-clicked", cardId);
 };
 
-const retryInitialization = async () => {
+const retry = async () => {
   error.value = null;
-  await initializeCanvas();
+  await init();
 };
 
 const cleanupCardListeners = () => {
@@ -298,7 +276,7 @@ const cleanup = () => {
 
 onMounted(async () => {
   await nextTick();
-  await initializeCanvas();
+  await init();
 });
 
 watch(

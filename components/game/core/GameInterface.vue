@@ -30,21 +30,39 @@
       />
     </div>
 
-    <!-- Game Canvas Container -->
-    <div class="flex-1 min-h-0 w-full flex justify-center">
-      <CanvasContainer
-        :show-fallback="state.showFallbackUI"
-        :is-game-loading="state.isLoading"
-        :cards="cardsStore.cards"
-        :game-status="gameStatus"
-        @card-clicked="handleCardClick"
-        @canvas-ready="gameCanvas.handleCanvasReady"
-        @canvas-error="gameCanvas.handleCanvasError"
-        @loading-state-changed="gameCanvas.handleLoadingStateChanged"
-        @layout-changed="gameCanvas.handleLayoutChanged"
-      />
+    <!-- Game Canvas Area - simplified -->
+    <div ref="gameAreaRef" class="flex-1 min-h-0 w-full flex justify-center">
+      <div
+        class="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-lg shadow-inner h-full w-full flex items-center justify-center min-h-0"
+        data-size="canvas-container"
+      >
+        <ClientOnly>
+          <!-- Resize overlay -->
+          <ResizeOverlay
+            v-if="isResizing && !isCanvasLoading"
+            :is-visible="true"
+          />
+
+          <GameCanvas
+            v-else-if="shouldShowCanvas"
+            :key="canvasKey"
+            :cards="cardsStore.cards"
+            :game-status="gameStatus"
+            :container-width="gameAreaWidth"
+            :container-height="gameAreaHeight"
+            @card-clicked="handleCardClick"
+            @canvas-ready="onCanvasReady"
+            @canvas-error="onCanvasError"
+          />
+
+          <GameLoadingState v-else-if="isCanvasLoading" />
+          <FallbackCardGrid v-else-if="state.showFallbackUI" />
+          <GameEmptyState v-else />
+        </ClientOnly>
+      </div>
     </div>
 
+    <!-- Dialogs -->
     <NewGameDialog
       :visible="uiStore.dialogsState.newGame"
       :difficulties="difficulties"
@@ -66,15 +84,24 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from "vue";
+import { ref, computed, watch, onMounted, nextTick, useTemplateRef } from "vue";
+import { useElementSize, useDebounceFn } from "@vueuse/core";
+import { useGameController } from "~/composables/core/useGameController";
+import { useGameSounds } from "~/composables/audio/useGameSounds";
+import type { GridLayout } from "~/composables/engine/layout/adaptiveGridLayout";
 
+// Components
 import GameHeader from "../ui/header/GameHeader.vue";
 import GameStatusBar from "../ui/status/GameStatusBar.vue";
 import GameControlButtons from "../ui/GameControlButtons.vue";
-import CanvasContainer from "./CanvasContainer.vue";
-import { useGameController } from "~/composables/core/useGameController";
-import { useGameCanvas } from "~/composables/core/useGameCanvas";
-import { useGameSounds } from "~/composables/audio/useGameSounds";
+import GameCanvas from "./GameCanvas.vue";
+import FallbackCardGrid from "./FallbackCardGrid.vue";
+import GameLoadingState from "./GameLoadingState.vue";
+import GameEmptyState from "./GameEmptyState.vue";
+
+const ResizeOverlay = defineAsyncComponent(
+  () => import("../ui/overlays/ResizeOverlay.vue")
+);
 
 const NewGameDialog = defineAsyncComponent(
   () => import("../dialogs/NewGameDialog.vue")
@@ -83,10 +110,18 @@ const SettingsDialog = defineAsyncComponent(
   () => import("../dialogs/SettingsDialog.vue")
 );
 
-const gameCanvas = useGameCanvas();
-const gameSounds = useGameSounds();
+// Canvas management - moved from CanvasContainer
+const gameAreaRef = useTemplateRef<HTMLDivElement>("gameAreaRef");
+const isCanvasReady = ref(false);
+const isComponentMounted = ref(false);
+const isResizing = ref(false);
 
+const { width: gameAreaWidth, height: gameAreaHeight } =
+  useElementSize(gameAreaRef);
+
+// Game controller
 const gameController = useGameController();
+const gameSounds = useGameSounds();
 
 const {
   state,
@@ -97,7 +132,6 @@ const {
   uiStore,
   coreStore,
   cardsStore,
-  // timerStore,
   startNewGame,
   pauseGame,
   resumeGame,
@@ -109,12 +143,63 @@ const {
   handleSettingsApply,
   handleNewGameStart,
   seedValidator,
+  canvasKey,
+  resetCanvas,
 } = gameController;
 
+// Canvas state logic - moved from CanvasContainer
+const hasCards = computed(() => cardsStore.cards.length > 0);
+const isCanvasLoading = computed(
+  () => state.value.isLoading || !isComponentMounted.value
+);
+
+const shouldShowCanvas = computed(() => {
+  return (
+    !state.value.showFallbackUI && hasCards.value && isComponentMounted.value
+  );
+});
+
+// Canvas event handlers - simplified names
+const onCanvasReady = () => {
+  isCanvasReady.value = true;
+  state.value.showFallbackUI = false;
+};
+
+const onCanvasError = (error?: string) => {
+  isCanvasReady.value = false;
+  state.value.showFallbackUI = true;
+};
+
+// Canvas recreation - moved from CanvasContainer
+const recreateCanvas = useDebounceFn(() => {
+  resetCanvas();
+  isCanvasReady.value = false;
+  isResizing.value = false;
+}, 300);
+
+// Watchers
+watch(
+  () => cardsStore.cards.length,
+  () => {
+    if (cardsStore.cards.length === 0) {
+      isCanvasReady.value = false;
+    }
+  }
+);
+
+watch([gameAreaWidth, gameAreaHeight], (newSize, oldSize) => {
+  if (oldSize && (newSize[0] !== oldSize[0] || newSize[1] !== oldSize[1])) {
+    isResizing.value = true;
+    recreateCanvas();
+  }
+});
+
 onMounted(async () => {
+  await nextTick();
+  isComponentMounted.value = true;
+
   gameController.setupWatchers();
   await gameController.initialize();
-
   await gameSounds.initializeAudio();
 });
 </script>

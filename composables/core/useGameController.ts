@@ -67,6 +67,9 @@ export const useGameController = () => {
     hasUnfinishedGame: false,
   });
 
+  // Canvas management - moved from CanvasContainer
+  const canvasKey = ref(`canvas-${Date.now()}`);
+
   const buildCurrentGameState = () => {
     return {
       id: `${coreStore.seed}-${coreStore.difficulty.name}`,
@@ -196,8 +199,6 @@ export const useGameController = () => {
         return false;
       }
 
-      console.log("🔄 Restoring game state...", savedState);
-
       coreStore.seed = savedState.seed;
       coreStore.difficulty = savedState.difficulty;
       coreStore.isPlaying = savedState.isPlaying;
@@ -212,23 +213,11 @@ export const useGameController = () => {
 
       coreStore.restoreStats(savedState.stats);
 
-      console.log("🔄 Restoring cards...", {
-        savedCardsCount: savedState.cards?.length || 0,
-        currentCardsCount: cardsStore.cards.length,
-      });
-
       cardsStore.restoreState(savedState.cards);
-
-      console.log("🔄 Cards restored", {
-        restoredCardsCount: cardsStore.cards.length,
-        firstCard: cardsStore.cards[0]?.id || "none",
-      });
 
       timerStore.restoreTimer(savedState.stats.timeElapsed);
 
       await initializeData(100);
-
-      console.log("✅ Game state restored successfully");
 
       toast.add({
         severity: "info",
@@ -270,16 +259,6 @@ export const useGameController = () => {
             savedState.cards.length > 0 &&
             !savedState.stats.isComplete))
       );
-
-      if (state.value.hasUnfinishedGame) {
-        console.log("🎮 Unfinished game found, seed:", savedState?.seed);
-        console.log(
-          "🎮 Game state - isPlaying:",
-          savedState?.isPlaying,
-          "cards:",
-          savedState?.cards?.length
-        );
-      }
     } catch (error) {
       console.error("❌ Error checking for unfinished game:", error);
       state.value.hasUnfinishedGame = false;
@@ -304,11 +283,9 @@ export const useGameController = () => {
       if (coreStore.isPaused) {
         coreStore.resumeGame();
         timerStore.startTimer();
-        console.log("⏰ Timer resumed from paused state");
       } else if (coreStore.isPlaying) {
         // Restart timer if game was playing
         timerStore.startTimer();
-        console.log("⏰ Timer resumed from playing state");
       }
     }
 
@@ -319,7 +296,6 @@ export const useGameController = () => {
     try {
       await deleteGameState();
       state.value.hasUnfinishedGame = false;
-      console.log("🗑️ Unfinished game data cleared");
     } catch (error) {
       console.error("❌ Failed to clear unfinished game:", error);
     }
@@ -340,10 +316,6 @@ export const useGameController = () => {
 
       await deleteGameState();
       state.value.hasUnfinishedGame = false;
-
-      console.log(
-        `🎮 Game initialized: ${difficulty.name} mode with ${cardsStore.cards.length} cards`
-      );
     } catch (error) {
       console.error("Failed to initialize game:", error);
       toast.add({
@@ -364,8 +336,6 @@ export const useGameController = () => {
     timerStore.startTimer();
 
     await autoSaveGameState();
-
-    console.log("🕐 Timer started, isRunning:", timerStore.isRunning);
   };
 
   const pauseGame = async () => {
@@ -395,9 +365,7 @@ export const useGameController = () => {
     await startNewGame(currentOptions);
   };
 
-  // Canvas management
   const handleCanvasReady = () => {
-    console.log("✅ Game canvas ready");
     state.value.showFallbackUI = false;
   };
 
@@ -414,7 +382,6 @@ export const useGameController = () => {
 
   const handleCardClick = async (cardId: string) => {
     if (gameStatus.value !== "playing") return;
-    console.log(`🎯 Card clicked: ${cardId}`);
 
     const success = cardsStore.selectCard(cardId);
 
@@ -472,6 +439,10 @@ export const useGameController = () => {
 
   const closeDialog = (dialogName: "newGame" | "settings") => {
     uiStore.closeDialog(dialogName);
+  };
+
+  const resetCanvas = () => {
+    canvasKey.value = `canvas-${Date.now()}`;
   };
 
   const handleSettingsApply = async (settings: {
@@ -545,10 +516,6 @@ export const useGameController = () => {
     await nextTick();
     await loadSeedHistory();
     await checkForUnfinishedGame();
-
-    if (state.value.hasUnfinishedGame) {
-      console.log("🎮 Found unfinished game - user can choose to resume");
-    }
   };
 
   const setupWatchers = () => {
@@ -584,9 +551,7 @@ export const useGameController = () => {
             };
 
             const saveSuccess = await saveGameResult(gameResult);
-            if (saveSuccess) {
-              console.log("✅ Game result saved to history");
-            } else {
+            if (!saveSuccess) {
               console.warn("⚠️ Failed to save game result to history");
             }
           } catch (error) {
@@ -602,7 +567,6 @@ export const useGameController = () => {
     watch(
       () => timerStore.timeElapsed,
       (newTimeElapsed) => {
-        // Convert milliseconds to seconds for core store
         const timeInSeconds = Math.floor(newTimeElapsed / 1000);
         coreStore.updateTimeElapsed(timeInSeconds);
       }
@@ -669,6 +633,8 @@ export const useGameController = () => {
     handleCanvasReady,
     handleCanvasError,
     handleCardClick,
+    canvasKey: readonly(canvasKey),
+    resetCanvas,
 
     // Sharing
     shareGame,

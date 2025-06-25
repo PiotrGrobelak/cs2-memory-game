@@ -1,5 +1,9 @@
 import { ref } from "vue";
 
+/**
+ * This composable will be used to simulate the loading of the game in the future.
+ */
+
 interface LoadingStep {
   message: string;
   duration: number;
