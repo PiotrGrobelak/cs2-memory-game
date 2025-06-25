@@ -48,7 +48,7 @@ For detailed information, see the [documentation](./docs/):
 ## 🔧 Remaining Work
 
 - 🎯 Grid layout optimizations
-- ⚡ Fix unnecessary component rerenders
+- 🎯 Better rendering cards on the mobile devices
 - 🧪 Expand test coverage
 
 ## 📄 License

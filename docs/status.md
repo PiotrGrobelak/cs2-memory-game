@@ -9,8 +9,6 @@ This project is currently under active development. The core game mechanics, vis
 - Grid layout performance optimizations
 - Component rerender optimizations
 - Test coverage expansion
-- Audio system implementation
-- QR code sharing features
 
 ## 📈 Success Metrics
 

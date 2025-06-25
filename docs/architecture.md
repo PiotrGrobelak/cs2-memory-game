@@ -8,9 +8,8 @@ The CS2 Memory Game uses a **modular, feature-based architecture** with Vue 3 Co
 components/
 ├── game/
 │   ├── core/                    # Main game components
-│   │   ├── GameInterface.vue    # [ROOT] Primary game interface
+│   │   ├── GameInterface.vue    # [ROOT] Primary game interface (now includes canvas management)
 │   │   ├── GameCanvas.vue       # HTML5 Canvas rendering component
-│   │   ├── CanvasContainer.vue  # Canvas wrapper container
 │   │   ├── FallbackCardGrid.vue # Fallback grid for non-canvas
 │   │   ├── GameEmptyState.vue   # Empty state display
 │   │   └── GameLoadingState.vue # Loading state display
@@ -94,7 +93,7 @@ User clicks "Start Game" → GameController.startNewGame()
 ### Card Selection Flow
 
 ```
-User clicks card → EngineCore.handleClick() → Game.selectCard()
+User clicks card → GameCanvas.handleClick() → useGameController.handleCardClick()
 → CardStore.updateState() → CanvasState.updateCard()
 → CardRenderer.updateVisualState() → Game.checkForMatch()
 ```
