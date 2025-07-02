@@ -94,6 +94,20 @@ describe("useEngineCore (Unified API)", () => {
       enableAutoResize: true,
       maintainAspectRatio: false,
       backgroundAlpha: 0,
+      containerWidth: 1200,
+      containerHeight: 800,
+      deviceCapabilities: {
+        isTouchDevice: false,
+        hasHover: true,
+        hasMouseSupport: true,
+        prefersReducedMotion: false,
+        pixelRatio: 1,
+        userAgent: "test",
+      },
+      deviceType: "desktop",
+      deviceOrientation: "landscape",
+      isMobile: false,
+      isTouchDevice: false,
     };
 
     mockCards = [
@@ -130,9 +144,9 @@ describe("useEngineCore (Unified API)", () => {
     it("should initialize with config and no app", () => {
       const engine = useEngineCore(config);
 
-      expect(engine.deviceType.value).toBe("desktop");
-      expect(engine.deviceOrientation.value).toBe("landscape");
-      expect(engine.isMobile.value).toBe(false);
+      expect(engine.getDeviceInfo.value.type).toBe("desktop");
+      expect(engine.getDeviceInfo.value.orientation).toBe("landscape");
+      expect(engine.getDeviceInfo.value.isMobile).toBe(false);
       expect(engine.containerDimensions.value).toEqual({
         width: 1200,
         height: 800,
@@ -144,7 +158,7 @@ describe("useEngineCore (Unified API)", () => {
       const engine = useEngineCore(config);
       engine.initializePixiApp(mockApp);
 
-      expect(engine.deviceType.value).toBe("desktop");
+      expect(engine.getDeviceInfo.value.type).toBe("desktop");
       expect(engine.pixiGrid).toBeDefined();
     });
   });

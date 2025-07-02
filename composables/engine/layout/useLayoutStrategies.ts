@@ -356,7 +356,7 @@ export const calculateMobilePortraitLayout: LayoutStrategyFunction = (
   if (cardCount <= 12) {
     // Easy level: 2-4 columns work well
     minCols = 2;
-    maxCols = 4;
+    maxCols = 3;
   } else if (cardCount <= 16) {
     // Medium level: 3-5 columns
     minCols = 3;

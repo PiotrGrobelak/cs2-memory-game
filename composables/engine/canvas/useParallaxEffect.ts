@@ -1,6 +1,5 @@
 import { ref, computed, onUnmounted } from "vue";
 import type { Container, Sprite, FederatedPointerEvent } from "pixi.js";
-import { useDeviceDetection } from "~/composables/engine/device";
 
 export interface ParallaxTarget {
   sprite: Container | Sprite;
@@ -15,9 +14,13 @@ export interface ParallaxState {
   strength: number;
 }
 
-export const useParallaxEffect = () => {
-  const { deviceType, isTouchDevice } = useDeviceDetection();
-
+export const useParallaxEffect = ({
+  deviceType,
+  isTouchDevice,
+}: {
+  deviceType: string;
+  isTouchDevice: boolean;
+}) => {
   const parallaxTargets = ref<Map<string, ParallaxTarget>>(new Map());
   const parallaxState = ref<ParallaxState>({
     enabled: true,
@@ -31,25 +34,19 @@ export const useParallaxEffect = () => {
     gamma: 0, // Y-axis rotation (tilt left/right)
   });
 
-  const isDesktop = computed(() => deviceType.value === "desktop");
-  const isMobile = computed(() => deviceType.value === "mobile");
+  const isDesktop = computed(() => deviceType === "desktop");
+  const isMobile = computed(() => deviceType === "mobile");
   const shouldUseMouseParallax = computed(
-    () => isDesktop.value && !isTouchDevice.value
+    () => isDesktop.value && !isTouchDevice
   );
   const shouldUseOrientationParallax = computed(
-    () => isMobile.value && isTouchDevice.value
+    () => isMobile.value && isTouchDevice
   );
 
   const initializeParallax = () => {
     if (shouldUseOrientationParallax.value) {
       setupOrientationParallax();
     }
-
-    console.log("🎭 Individual card parallax effect initialized:", {
-      device: deviceType.value,
-      mouseParallax: shouldUseMouseParallax.value,
-      orientationParallax: shouldUseOrientationParallax.value,
-    });
   };
 
   const addParallaxTarget = (
@@ -271,7 +268,6 @@ export const useParallaxEffect = () => {
                 "deviceorientation",
                 handleDeviceOrientation
               );
-              console.log("🧭 Device orientation parallax enabled (iOS)");
             }
           })
           .catch((error: Error) => {
@@ -280,7 +276,6 @@ export const useParallaxEffect = () => {
       } else {
         // Non-iOS devices
         window.addEventListener("deviceorientation", handleDeviceOrientation);
-        console.log("🧭 Device orientation parallax enabled");
       }
     }
   };

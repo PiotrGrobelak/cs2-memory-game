@@ -35,7 +35,7 @@ import {
 } from "vue";
 import { Application, type Container } from "pixi.js";
 import type { GameCard, GameStatus } from "~/types/game";
-import { useEngineCore } from "~/composables/engine";
+import { useDeviceDetection, useEngineCore } from "~/composables/engine";
 import { useTextureLoader } from "~/composables/engine/canvas/useTextureLoader";
 import { useParallaxEffect } from "~/composables/engine/canvas/useParallaxEffect";
 import { useCardRenderer } from "~/composables/engine/canvas/useCardRenderer";
@@ -80,6 +80,17 @@ const pixiApp = shallowRef<Application | null>(null);
 const devicePixelRatio = computed(() => window.devicePixelRatio || 1);
 const resolution = computed(() => Math.min(devicePixelRatio.value, 3));
 
+const {
+  deviceType,
+  deviceOrientation,
+  deviceCapabilities,
+  isMobile,
+  isTouchDevice,
+} = useDeviceDetection({
+  containerWidth: props.containerWidth,
+  containerHeight: props.containerHeight,
+});
+
 const engine = useEngineCore({
   enableAutoResize: true,
   resizeThrottleMs: 150,
@@ -88,11 +99,16 @@ const engine = useEngineCore({
   minHeight: 240,
   padding: 20,
   maintainAspectRatio: true,
+  containerWidth: props.containerWidth,
+  containerHeight: props.containerHeight,
+  deviceCapabilities: deviceCapabilities.value,
+  deviceType: deviceType.value,
+  deviceOrientation: deviceOrientation.value,
+  isMobile: isMobile.value,
+  isTouchDevice: isTouchDevice.value,
 });
 
 const {
-  deviceType,
-  deviceOrientation,
   containerDimensions,
   updateCanvasDimensions,
   initializeFromElement,
@@ -110,8 +126,14 @@ const isReady = computed(() => !!pixiApp.value);
 const isInteractive = computed(() => props.gameStatus === "playing");
 
 const { getTexture, preloadCardTextures } = useTextureLoader();
-const parallaxEffect = useParallaxEffect();
-const { createCardContainer: createCard } = useCardRenderer(getTexture);
+const parallaxEffect = useParallaxEffect({
+  deviceType: deviceType.value,
+  isTouchDevice: isTouchDevice.value,
+});
+const { createCardContainer: createCard } = useCardRenderer(getTexture, {
+  deviceType: deviceType.value,
+  deviceCapabilities: deviceCapabilities.value,
+});
 
 const createPixiApp = async (): Promise<Application> => {
   if (!canvasContainer.value) {

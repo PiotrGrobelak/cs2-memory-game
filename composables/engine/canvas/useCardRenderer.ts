@@ -8,11 +8,15 @@ import {
 } from "pixi.js";
 import { computed, ref } from "vue";
 import type { GameCard } from "~/types/game";
-import { useDeviceDetection } from "~/composables/engine/device";
+import type { DeviceCapabilities } from "~/composables/engine/device/useDeviceDetection";
 
-export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
-  const { deviceType, deviceCapabilities } = useDeviceDetection();
-
+export const useCardRenderer = (
+  getTexture: (imageUrl: string) => unknown,
+  {
+    deviceType,
+    deviceCapabilities,
+  }: { deviceType: string; deviceCapabilities: DeviceCapabilities }
+) => {
   const rarityConfigCache = ref<
     Map<string, { color: number; alpha: number; borderWidth: number }>
   >(new Map());
@@ -92,15 +96,15 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
     cardWidth: number,
     cardHeight: number
   ): number => {
-    const cacheKey = `${textureWidth}x${textureHeight}-${cardWidth}x${cardHeight}-${deviceType.value}`;
+    const cacheKey = `${textureWidth}x${textureHeight}-${cardWidth}x${cardHeight}-${deviceType}`;
 
     if (scaleCalculationCache.value.has(cacheKey)) {
       return scaleCalculationCache.value.get(cacheKey)!;
     }
 
     // Optimize image space allocation based on device type
-    const isMobileDevice = deviceType.value === "mobile";
-    const pixelRatio = deviceCapabilities.value.pixelRatio || 1;
+    const isMobileDevice = deviceType === "mobile";
+    const pixelRatio = deviceCapabilities.pixelRatio || 1;
 
     // Increase image area for mobile devices and account for high-DPI screens
     const maxWidthFactor = isMobileDevice ? 0.85 : 0.7; // More space on mobile
@@ -127,8 +131,8 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
     isMatched: boolean
   ): Text => {
     // Calculate responsive font size based on card width and device type
-    const isMobileDevice = deviceType.value === "mobile";
-    const pixelRatio = deviceCapabilities.value.pixelRatio || 1;
+    const isMobileDevice = deviceType === "mobile";
+    const pixelRatio = deviceCapabilities.pixelRatio || 1;
 
     // Optimize font size for mobile devices with high-DPI screens
     const baseFontScale = isMobileDevice ? 0.1 : 0.12; // Smaller text on mobile for better fit
@@ -328,11 +332,11 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
           weaponSprite.scale.set(scale);
           weaponSprite.anchor.set(0.5);
 
-          const isMobileDevice = deviceType.value === "mobile";
+          const isMobileDevice = deviceType === "mobile";
           const verticalOffset = isMobileDevice ? -5 : -10;
           weaponSprite.position.set(0, verticalOffset);
 
-          if (isMobileDevice && deviceCapabilities.value.pixelRatio > 1.5) {
+          if (isMobileDevice && deviceCapabilities.pixelRatio > 1.5) {
             // Ensure crisp rendering on high-DPI displays
             weaponSprite.roundPixels = true;
           }
@@ -368,13 +372,13 @@ export const useCardRenderer = (getTexture: (imageUrl: string) => unknown) => {
         isMatched
       );
 
-      const isMobileDevice = deviceType.value === "mobile";
+      const isMobileDevice = deviceType === "mobile";
       const textVerticalPosition = isMobileDevice
         ? cardHeight * 0.35
         : cardHeight * 0.3;
       weaponNameText.position.set(0, textVerticalPosition);
 
-      if (isMobileDevice && deviceCapabilities.value.pixelRatio > 1.5) {
+      if (isMobileDevice && deviceCapabilities.pixelRatio > 1.5) {
         weaponNameText.roundPixels = true;
       }
 

@@ -12,12 +12,21 @@ export interface DeviceCapabilities {
   prefersReducedMotion: boolean;
   pixelRatio: number;
   userAgent: string;
-  os: UAParser.IOS;
-  browser: UAParser.IBrowser;
+  os?: UAParser.IOS;
+  browser?: UAParser.IBrowser;
 }
 
-export const useDeviceDetection = () => {
-  const windowSize = ref({ width: 0, height: 0 });
+export const useDeviceDetection = ({
+  containerWidth,
+  containerHeight,
+}: {
+  containerWidth?: number;
+  containerHeight?: number;
+}) => {
+  const windowSize = ref({
+    width: containerWidth || 0,
+    height: containerHeight || 0,
+  });
 
   const uaParser = new UAParser();
   const uaResult = uaParser.getResult();

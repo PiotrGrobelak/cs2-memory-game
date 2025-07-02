@@ -44,31 +44,10 @@ export const useResponsiveGrid = (app: Application) => {
     );
   };
 
-  const redrawGrid = (layout: GridLayout): void => {
+  const redrawGrid = (): void => {
     gridContainer.value.removeChildren();
 
     const graphics = new Graphics();
-
-    const { cardDimensions } = layout;
-    const { width: cardWidth, height: cardHeight } = cardDimensions;
-
-    // Draw grid lines (optional, for debugging)
-    if (process.env.NODE_ENV === "development") {
-      layout.positions.forEach((pos) => {
-        graphics
-          .rect(
-            pos.x - cardWidth / 2,
-            pos.y - cardHeight / 2,
-            cardWidth,
-            cardHeight
-          )
-          .stroke({
-            color: 0x333333,
-            width: 1,
-            alpha: 0.3,
-          });
-      });
-    }
 
     gridContainer.value.addChild(graphics);
   };
@@ -79,17 +58,8 @@ export const useResponsiveGrid = (app: Application) => {
     forceRedraw = false
   ): GridLayout => {
     if (forceRedraw || !currentLayout.value || hasLayoutChanged(layout)) {
-      redrawGrid(layout);
+      redrawGrid();
       currentLayout.value = layout;
-
-      if (process.env.NODE_ENV === "development") {
-        console.log("🎯 ResponsivePixiGrid Updated:", {
-          gridSize: `${layout.cols}×${layout.rows}`,
-          cardSize: `${layout.cardDimensions.width}×${layout.cardDimensions.height}px`,
-          efficiency: Math.round(layout.efficiency * 100) + "%",
-          positionsCount: layout.positions.length,
-        });
-      }
     }
 
     return layout;

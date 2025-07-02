@@ -7,7 +7,6 @@ import type {
   PixiResponsiveConfig,
   ResponsivePixiState,
 } from "../useEngineCore.model";
-import { useDeviceDetection } from "../device";
 
 /**
  * Canvas State Management Composable
@@ -21,8 +20,8 @@ import { useDeviceDetection } from "../device";
  *
  */
 export const useCanvasState = (config: PixiResponsiveConfig) => {
-  const containerWidth = ref(0);
-  const containerHeight = ref(0);
+  const containerWidth = ref(config.containerWidth);
+  const containerHeight = ref(config.containerHeight);
 
   const state = reactive<ResponsivePixiState>({
     isResizing: false,
@@ -37,9 +36,6 @@ export const useCanvasState = (config: PixiResponsiveConfig) => {
     },
   });
 
-  const { deviceType: detectedDeviceType, deviceCapabilities } =
-    useDeviceDetection();
-
   const cleanupFunctions: Array<() => void> = [];
 
   const containerDimensions = computed(() => ({
@@ -48,7 +44,7 @@ export const useCanvasState = (config: PixiResponsiveConfig) => {
   }));
 
   const deviceType = computed((): DeviceType => {
-    return detectedDeviceType.value;
+    return config.deviceType;
   });
 
   const deviceOrientation = computed((): DeviceOrientation => {
@@ -57,7 +53,7 @@ export const useCanvasState = (config: PixiResponsiveConfig) => {
   });
 
   const isTouch = computed(() => {
-    return deviceCapabilities.value.isTouchDevice;
+    return config.isTouchDevice;
   });
 
   const isReady = computed(() => !!state.pixiApp && !state.isLoading);
@@ -77,7 +73,7 @@ export const useCanvasState = (config: PixiResponsiveConfig) => {
       type: deviceType.value,
       orientation: deviceOrientation.value,
       isTouch: isTouch.value,
-      userAgent: deviceCapabilities.value.userAgent,
+      userAgent: config.deviceCapabilities.userAgent,
     };
   };
 

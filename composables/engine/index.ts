@@ -31,4 +31,4 @@ export type {
 } from "./useEngineCore.model";
 
 // Constants
-export { DEFAULT_CONFIG } from "./useEngineCore.constants";
+// export { DEFAULT_CONFIG } from "./useEngineCore.constants";

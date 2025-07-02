@@ -1,5 +1,4 @@
 import { computed, ref } from "vue";
-import { useDeviceDetection } from "./device";
 import { useCanvasState } from "./canvas/useCanvasState";
 import { useResponsiveGrid } from "./canvas/useResponsiveGrid";
 import { createLayout, getLayoutStrategy } from "./layout/useLayoutStrategies";
@@ -19,16 +18,6 @@ import type { Application } from "pixi.js";
  *
  */
 export const useEngineCore = (config: PixiResponsiveConfig) => {
-  // Device detection - called once during component setup
-  const {
-    deviceType,
-    deviceOrientation,
-    windowSize,
-    deviceCapabilities,
-    isMobile,
-    isTouchDevice,
-  } = useDeviceDetection();
-
   // Canvas state management
   const canvasState = useCanvasState(config);
 
@@ -82,18 +71,18 @@ export const useEngineCore = (config: PixiResponsiveConfig) => {
       return null;
     }
 
-    const deviceSettings = DEVICE_SETTINGS[deviceType.value];
+    const deviceSettings = DEVICE_SETTINGS[config.deviceType];
     const strategy = getLayoutStrategy(
-      deviceType.value,
-      deviceOrientation.value
+      config.deviceType,
+      config.deviceOrientation
     );
 
     const context = {
       canvasWidth: width,
       canvasHeight: height,
       cardCount: cards.length,
-      deviceType: deviceType.value,
-      orientation: deviceOrientation.value,
+      deviceType: config.deviceType,
+      orientation: config.deviceOrientation,
       ...deviceSettings,
     };
 
@@ -133,11 +122,11 @@ export const useEngineCore = (config: PixiResponsiveConfig) => {
   };
 
   const getDeviceInfo = computed(() => ({
-    type: deviceType.value,
-    orientation: deviceOrientation.value,
-    isTouch: isTouchDevice.value,
-    isMobile: isMobile.value,
-    capabilities: deviceCapabilities.value,
+    type: config.deviceType,
+    orientation: config.deviceOrientation,
+    isTouch: config.isTouchDevice,
+    isMobile: config.isMobile,
+    capabilities: config.deviceCapabilities,
   }));
 
   const getCanvasInfo = computed(() => ({
@@ -150,7 +139,7 @@ export const useEngineCore = (config: PixiResponsiveConfig) => {
 
   const validateLayout = (layout: GridLayout) => {
     const warnings: string[] = [];
-    const deviceSettings = DEVICE_SETTINGS[deviceType.value];
+    const deviceSettings = DEVICE_SETTINGS[config.deviceType];
 
     // Check card size constraints
     if (layout.cardDimensions.width < deviceSettings.minCardSize) {
@@ -190,13 +179,6 @@ export const useEngineCore = (config: PixiResponsiveConfig) => {
   };
 
   return {
-    // Device state
-    deviceType,
-    deviceOrientation,
-    isMobile,
-    isTouchDevice,
-    deviceCapabilities,
-
     // Canvas state
     containerDimensions: canvasState.containerDimensions,
     isReady: canvasState.isReady,

@@ -1,6 +1,7 @@
 import type { Application } from "pixi.js";
 import type { DeviceType, DeviceOrientation } from "./device";
 import type { GridLayout } from "./layout/useLayoutStrategies";
+import type { DeviceCapabilities } from "./device/useDeviceDetection";
 
 /**
  * Configuration interface for PixiJS responsive canvas
@@ -14,6 +15,13 @@ export interface PixiResponsiveConfig {
   enableAutoResize: boolean;
   maintainAspectRatio: boolean;
   backgroundAlpha: number;
+  containerWidth: number;
+  containerHeight: number;
+  deviceCapabilities: DeviceCapabilities;
+  deviceType: DeviceType;
+  deviceOrientation: DeviceOrientation;
+  isMobile: boolean;
+  isTouchDevice: boolean;
 }
 
 /**
