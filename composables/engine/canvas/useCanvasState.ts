@@ -1,11 +1,8 @@
 import { ref, reactive, computed, watch } from "vue";
 import type { Application } from "pixi.js";
 import { useThrottleFn } from "@vueuse/core";
-import type {
-  GridLayout,
-  DeviceType,
-  DeviceOrientation,
-} from "../layout/adaptiveGridLayout";
+import type { DeviceType, DeviceOrientation } from "../device";
+import type { GridLayout } from "../layout/useLayoutStrategies";
 import type {
   PixiResponsiveConfig,
   ResponsivePixiState,

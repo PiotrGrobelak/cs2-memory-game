@@ -88,7 +88,6 @@ import { ref, computed, watch, onMounted, nextTick, useTemplateRef } from "vue";
 import { useElementSize, useDebounceFn } from "@vueuse/core";
 import { useGameController } from "~/composables/core/useGameController";
 import { useGameSounds } from "~/composables/audio/useGameSounds";
-import type { GridLayout } from "~/composables/engine/layout/adaptiveGridLayout";
 
 // Components
 import GameHeader from "../ui/header/GameHeader.vue";

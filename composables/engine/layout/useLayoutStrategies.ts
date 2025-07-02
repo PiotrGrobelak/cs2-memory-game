@@ -1,10 +1,4 @@
-import type {
-  GridLayout,
-  GridPosition,
-  LayoutCalculationContext,
-  DeviceType,
-  DeviceOrientation,
-} from "./adaptiveGridLayout";
+import type { DeviceType, DeviceOrientation } from "../device";
 
 /**
  * Parameters for the shared createLayout function
@@ -22,6 +16,46 @@ export interface GridParams {
   cardCount: number;
   deviceType: DeviceType;
   orientation: DeviceOrientation;
+}
+
+export interface GridPosition {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface GridLayout {
+  positions: GridPosition[];
+  cardDimensions: {
+    width: number;
+    height: number;
+  };
+  cols: number;
+  rows: number;
+  totalGridWidth: number;
+  totalGridHeight: number;
+  efficiency: number;
+  deviceType: DeviceType;
+  orientation: DeviceOrientation;
+}
+
+export interface CanvasDimensions {
+  width: number;
+  height: number;
+}
+
+export interface LayoutCalculationContext {
+  canvasWidth: number;
+  canvasHeight: number;
+  cardCount: number;
+  deviceType: DeviceType;
+  orientation: DeviceOrientation;
+  minCardSize: number;
+  maxCardSize: number;
+  gap: number;
+  aspectRatio: number;
+  paddingFactor: number;
 }
 
 /**

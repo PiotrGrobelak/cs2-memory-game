@@ -1,7 +1,7 @@
 import { shallowRef } from "vue";
 import { Container, Graphics, type Application } from "pixi.js";
 import type { GameCard } from "~/types/game";
-import type { GridLayout } from "../layout/adaptiveGridLayout";
+import type { GridLayout } from "../layout/useLayoutStrategies";
 
 /**
  * Responsive Grid Composable

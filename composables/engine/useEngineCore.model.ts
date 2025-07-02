@@ -1,9 +1,6 @@
 import type { Application } from "pixi.js";
-import type {
-  DeviceOrientation,
-  GridLayout,
-  DeviceType,
-} from "./layout/adaptiveGridLayout";
+import type { DeviceType, DeviceOrientation } from "./device";
+import type { GridLayout } from "./layout/useLayoutStrategies";
 
 /**
  * Configuration interface for PixiJS responsive canvas

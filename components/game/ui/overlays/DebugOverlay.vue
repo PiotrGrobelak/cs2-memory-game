@@ -17,7 +17,7 @@
 </template>
 
 <script setup lang="ts">
-import type { GridLayout } from "~/composables/engine/layout/adaptiveGridLayout";
+import type { GridLayout } from "~/composables/engine/layout/useLayoutStrategies";
 
 interface Props {
   isVisible: boolean;

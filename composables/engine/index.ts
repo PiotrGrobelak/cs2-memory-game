@@ -19,23 +19,12 @@ export {
   getLayoutStrategy,
   getAllLayoutStrategies,
 } from "./layout";
-export type { GridParams, LayoutStrategyFunction } from "./layout";
-
-// Simple layout generation for basic use cases
-export { generateSimpleLayout } from "./layout/adaptiveGridLayout";
 
 // Other composables
 export { useTextureLoader } from "./canvas/useTextureLoader";
 export { useCardRenderer } from "./canvas/useCardRenderer";
 export { useParallaxEffect } from "./canvas/useParallaxEffect";
 
-// Types re-exports
-export type {
-  GridLayout,
-  GridPosition,
-  LayoutCalculationContext,
-  CanvasDimensions,
-} from "./layout/adaptiveGridLayout";
 export type {
   PixiResponsiveConfig,
   ResponsivePixiState,

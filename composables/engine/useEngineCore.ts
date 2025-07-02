@@ -3,7 +3,7 @@ import { useDeviceDetection } from "./device";
 import { useCanvasState } from "./canvas/useCanvasState";
 import { useResponsiveGrid } from "./canvas/useResponsiveGrid";
 import { createLayout, getLayoutStrategy } from "./layout/useLayoutStrategies";
-import type { GridLayout } from "./layout/adaptiveGridLayout";
+import type { GridLayout } from "./layout/useLayoutStrategies";
 import type { PixiResponsiveConfig } from "./useEngineCore.model";
 import type { GameCard } from "~/types/game";
 import type { Application } from "pixi.js";
