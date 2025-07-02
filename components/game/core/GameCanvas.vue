@@ -39,7 +39,6 @@ import { useEngineCore } from "~/composables/engine";
 import { useTextureLoader } from "~/composables/engine/canvas/useTextureLoader";
 import { useParallaxEffect } from "~/composables/engine/canvas/useParallaxEffect";
 import { useCardRenderer } from "~/composables/engine/canvas/useCardRenderer";
-import type { GridLayout } from "~/composables/engine/layout/adaptiveGridLayout";
 
 const LoadingOverlay = defineAsyncComponent(
   () => import("~/components/game/ui/overlays/LoadingOverlay.vue")
@@ -78,6 +77,9 @@ const cardCleanupFunctions = shallowRef<Map<string, () => void>>(new Map());
 const isInitialized = ref(false);
 const pixiApp = shallowRef<Application | null>(null);
 
+const devicePixelRatio = computed(() => window.devicePixelRatio || 1);
+const resolution = computed(() => Math.min(devicePixelRatio.value, 3));
+
 const engine = useEngineCore({
   enableAutoResize: true,
   resizeThrottleMs: 150,
@@ -111,46 +113,6 @@ const { getTexture, preloadCardTextures } = useTextureLoader();
 const parallaxEffect = useParallaxEffect();
 const { createCardContainer: createCard } = useCardRenderer(getTexture);
 
-const init = async () => {
-  if (
-    !canvasContainer.value ||
-    !props.containerWidth ||
-    !props.containerHeight
-  ) {
-    return;
-  }
-
-  try {
-    error.value = null;
-
-    // Update canvas dimensions using the engine
-    updateCanvasDimensions(props.containerWidth, props.containerHeight);
-    initializeFromElement(canvasContainer.value);
-
-    const app = await createPixiApp();
-
-    // Initialize Pixi app in the engine
-    initializePixiApp(app);
-
-    parallaxEffect.initializeParallax();
-
-    await renderCards();
-
-    isInitialized.value = true;
-    emit("canvas-ready");
-
-    if (isDev.value) {
-      console.log("🚀 Optimized Pixi Canvas initialized successfully");
-    }
-  } catch (err) {
-    const errorMessage =
-      err instanceof Error ? err.message : "Failed to initialize canvas";
-    error.value = errorMessage;
-    emit("canvas-error", errorMessage);
-    console.error("Canvas initialization error:", err);
-  }
-};
-
 const createPixiApp = async (): Promise<Application> => {
   if (!canvasContainer.value) {
     throw new Error("Canvas container not available");
@@ -167,11 +129,12 @@ const createPixiApp = async (): Promise<Application> => {
   const app = new Application();
 
   await app.init({
-    width,
-    height,
+    width: width * resolution.value,
+    height: height * resolution.value,
     backgroundAlpha: 0,
     antialias: true,
-    resolution: 1,
+    resolution: resolution.value,
+    autoDensity: true,
     resizeTo: canvasContainer.value,
   });
 
@@ -179,6 +142,40 @@ const createPixiApp = async (): Promise<Application> => {
   pixiApp.value = app;
 
   return app;
+};
+
+const init = async () => {
+  if (
+    !canvasContainer.value ||
+    !props.containerWidth ||
+    !props.containerHeight
+  ) {
+    return;
+  }
+
+  try {
+    error.value = null;
+
+    updateCanvasDimensions(props.containerWidth, props.containerHeight);
+    initializeFromElement(canvasContainer.value);
+
+    const app = await createPixiApp();
+
+    initializePixiApp(app);
+
+    parallaxEffect.initializeParallax();
+
+    await renderCards();
+
+    isInitialized.value = true;
+    emit("canvas-ready");
+  } catch (err) {
+    const errorMessage =
+      err instanceof Error ? err.message : "Failed to initialize canvas";
+    error.value = errorMessage;
+    emit("canvas-error", errorMessage);
+    console.error("Canvas initialization error:", err);
+  }
 };
 
 const renderCards = async () => {
@@ -196,8 +193,6 @@ const renderCards = async () => {
 
     const layout = engineRenderCards(props.cards);
     if (!layout) return;
-
-    // emit("layout-changed", layout);
 
     await Promise.all(
       props.cards.map(async (card, index) => {
@@ -233,14 +228,6 @@ const renderCards = async () => {
         }
       })
     );
-
-    if (isDev.value) {
-      console.log("🎯 Optimized card rendering completed:", {
-        cardCount: props.cards.length,
-        deviceType: deviceType.value,
-        efficiency: Math.round(layout.efficiency * 100) + "%",
-      });
-    }
   } catch (err) {
     console.error("Error rendering cards:", err);
     const errorMessage =
@@ -254,7 +241,6 @@ const handleCardClick = (cardId: string) => {
   if (!isInteractive.value || isOrientationChanging.value) {
     return;
   }
-
   emit("card-clicked", cardId);
 };
 
