@@ -10,16 +10,6 @@ export type { DeviceType, DeviceOrientation } from "./device";
 export { useCanvasState } from "./canvas/useCanvasState";
 export { useResponsiveGrid as useResponsivePixiGrid } from "./canvas/useResponsiveGrid";
 
-// Layout strategies
-export {
-  createLayout,
-  calculateDesktopLayout,
-  calculateMobilePortraitLayout,
-  calculateMobileLandscapeLayout,
-  getLayoutStrategy,
-  getAllLayoutStrategies,
-} from "./layout";
-
 // Other composables
 export { useTextureLoader } from "./canvas/useTextureLoader";
 export { useCardRenderer } from "./canvas/useCardRenderer";

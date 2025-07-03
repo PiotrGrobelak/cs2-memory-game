@@ -49,7 +49,7 @@ const ErrorOverlay = defineAsyncComponent(
 const DebugOverlay = defineAsyncComponent({
   loader: () => import("~/components/game/ui/overlays/DebugOverlay.vue"),
   loadingComponent: { template: "<div></div>" },
-  delay: 200,
+  delay: 500,
 });
 
 interface Props {
@@ -68,7 +68,7 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const isDev = computed(() => process.env.NODE_ENV === "development");
+const isDev = computed(() => import.meta.env.DEV);
 
 const canvasContainer = shallowRef<HTMLDivElement>();
 const error = ref<string | null>(null);
@@ -214,6 +214,7 @@ const renderCards = async () => {
     await preloadCardTextures(props.cards);
 
     const layout = engineRenderCards(props.cards);
+
     if (!layout) return;
 
     await Promise.all(

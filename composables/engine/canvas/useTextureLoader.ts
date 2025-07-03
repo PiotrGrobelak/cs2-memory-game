@@ -110,12 +110,6 @@ export const useTextureLoader = () => {
     cards: GameCard[],
     onProgress?: (loaded: number, total: number) => void
   ): Promise<void> => {
-    console.log(
-      "🖼️ Starting optimized batched texture preload for",
-      cards.length,
-      "cards"
-    );
-
     const imageUrls = extractImageUrls(cards);
 
     if (imageUrls.length === 0) {
@@ -159,19 +153,6 @@ export const useTextureLoader = () => {
     }
 
     isLoading.value = false;
-
-    const totalSuccessful = batchResults.reduce(
-      (sum, result) => sum + result.successful.length,
-      0
-    );
-    const totalFailed = batchResults.reduce(
-      (sum, result) => sum + result.failed.length,
-      0
-    );
-
-    console.log(
-      `🎉 Optimized texture preload completed. Success: ${totalSuccessful}, Failed: ${totalFailed}, Cached: ${textureCache.value.size}`
-    );
   };
 
   const getTexture = async (imageUrl: string) => {
@@ -203,11 +184,6 @@ export const useTextureLoader = () => {
   };
 
   const clearTextureCache = (preserveCount = 0): void => {
-    console.log(
-      "🧹 Clearing texture cache",
-      preserveCount > 0 ? `(preserving ${preserveCount} most recent)` : ""
-    );
-
     if (preserveCount > 0) {
       // Keep most recently used textures
       const entries = Array.from(textureCache.value.entries());

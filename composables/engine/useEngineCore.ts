@@ -1,8 +1,10 @@
 import { computed, ref } from "vue";
 import { useCanvasState } from "./canvas/useCanvasState";
 import { useResponsiveGrid } from "./canvas/useResponsiveGrid";
-import { createLayout, getLayoutStrategy } from "./layout/useLayoutStrategies";
-import type { GridLayout } from "./layout/useLayoutStrategies";
+import { useOrientationGrid } from "./layout/useOrientationGrid";
+import { useOrientationMapper } from "./layout/useOrientationMapper";
+
+import type { GridLayout } from "./layout/useOrientationGrid";
 import type { PixiResponsiveConfig } from "./useEngineCore.model";
 import type { GameCard } from "~/types/game";
 import type { Application } from "pixi.js";
@@ -13,7 +15,7 @@ import type { Application } from "pixi.js";
  * Provides a unified API for all engine functionalities:
  * - Device detection and responsiveness
  * - Canvas state management
- * - Grid layout computation
+ * - Grid layout computation (Orientation-based)
  * - Pixi grid rendering
  *
  */
@@ -25,6 +27,9 @@ export const useEngineCore = (config: PixiResponsiveConfig) => {
   const pixiApp = ref<Application | null>(null);
   let pixiGrid: ReturnType<typeof useResponsiveGrid> | null = null;
 
+  // Orientation-based grid system
+  const orientationMapper = useOrientationMapper();
+
   /**
    * Initialize Pixi application and grid rendering
    */
@@ -33,7 +38,6 @@ export const useEngineCore = (config: PixiResponsiveConfig) => {
     pixiGrid = useResponsiveGrid(app);
   };
 
-  // Device Settings Configuration
   const DEVICE_SETTINGS = {
     mobile: {
       gap: 6,
@@ -71,29 +75,49 @@ export const useEngineCore = (config: PixiResponsiveConfig) => {
       return null;
     }
 
-    const deviceSettings = DEVICE_SETTINGS[config.deviceType];
-    const strategy = getLayoutStrategy(
+    const validation = orientationMapper.validateDeviceConfig(
       config.deviceType,
-      config.deviceOrientation
+      width,
+      height,
+      cards.length
     );
 
-    const context = {
-      canvasWidth: width,
-      canvasHeight: height,
-      cardCount: cards.length,
-      deviceType: config.deviceType,
-      orientation: config.deviceOrientation,
-      ...deviceSettings,
-    };
-
-    const gridParams = strategy(context);
-
-    if (!gridParams) {
-      console.error("Failed to calculate grid parameters");
+    if (!validation.isValid) {
+      console.error(
+        "Device configuration validation failed:",
+        validation.errors
+      );
       return null;
     }
 
-    return createLayout(gridParams);
+    if (validation.warnings.length > 0) {
+      console.warn("Device configuration warnings:", validation.warnings);
+    }
+
+    // Get optimal grid configuration
+    const gridConfig = orientationMapper.getOptimalGridConfig(
+      config.deviceType,
+      config.deviceOrientation,
+      width,
+      height,
+      cards.length,
+      config.deviceCapabilities
+    );
+
+    // Create orientation grid instance
+    const orientationGrid = useOrientationGrid(gridConfig);
+
+    // Generate layout using new system
+    const layout = orientationGrid.calculateLayout();
+
+    if (layout) {
+      const validation = orientationGrid.validateLayout(layout);
+      if (validation.warnings.length > 0) {
+        console.warn("Layout validation warnings:", validation.warnings);
+      }
+    }
+
+    return layout;
   };
 
   const renderCards = (

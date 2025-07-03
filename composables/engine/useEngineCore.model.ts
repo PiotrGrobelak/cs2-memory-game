@@ -1,6 +1,6 @@
 import type { Application } from "pixi.js";
 import type { DeviceType, DeviceOrientation } from "./device";
-import type { GridLayout } from "./layout/useLayoutStrategies";
+import type { GridLayout } from "./layout/useOrientationGrid";
 import type { DeviceCapabilities } from "./device/useDeviceDetection";
 
 /**
@@ -26,7 +26,6 @@ export interface PixiResponsiveConfig {
 
 /**
  * Internal state interface for responsive Pixi applications
- * @deprecated Will be refactored in future versions
  */
 export interface ResponsivePixiState {
   isResizing: boolean;

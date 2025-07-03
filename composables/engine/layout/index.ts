@@ -1,9 +1,17 @@
-// Barrel exports for layout module
 export {
-  createLayout,
-  calculateDesktopLayout,
-  calculateMobilePortraitLayout,
-  calculateMobileLandscapeLayout,
-  getLayoutStrategy,
-  getAllLayoutStrategies,
-} from "./useLayoutStrategies";
+  useOrientationGrid,
+  type OrientationGridConfig,
+  type GridConstraints,
+  type OrientationGridResult,
+  type ScreenOrientation,
+} from "./useOrientationGrid";
+
+export {
+  useOrientationMapper,
+  getConstraintsForDevice,
+  getEnhancedConstraints,
+  mapDeviceOrientationToScreen,
+  getOptimalGridConfig,
+  validateDeviceConfig,
+  getPerformanceOptimizedConstraints,
+} from "./useOrientationMapper";
