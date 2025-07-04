@@ -19,7 +19,7 @@ components/
 │   │   ├── header/              # Header section components
 │   │   ├── status/              # Game status components
 │   │   └── overlays/            # Game overlay components
-│   │       ├── DebugOverlay.vue # Debug information overlay
+│   │       ├── DebugOverlay.vue # Enhanced debug information overlay
 │   │       ├── ErrorOverlay.vue # Error display overlay
 │   │       ├── LoadingOverlay.vue # Loading screen overlay
 │   │       └── ResizeOverlay.vue # Resize detection overlay
@@ -54,12 +54,12 @@ composables/
 │   ├── canvas/                  # Canvas rendering components
 │   │   ├── useCanvasState.ts    # Canvas state management
 │   │   ├── useCardRenderer.ts   # PixiJS card rendering logic
-│   │   ├── useTextureLoader.ts  # Asset texture loading
+│   │   ├── useTextureLoader.ts  # Optimized asset texture loading
 │   │   ├── useParallaxEffect.ts # Parallax visual effects
 │   │   └── useResponsiveGrid.ts # Responsive grid calculations
-│   ├── layout/                  # Layout calculation strategies
-│   │   ├── useLayoutStrategies.ts # Layout algorithms
-│   │   └── adaptiveGridLayout.ts  # Adaptive grid positioning
+│   ├── layout/                  # Orientation-based layout system
+│   │   ├── useOrientationGrid.ts # Orientation-aware grid calculations
+│   │   └── useOrientationMapper.ts # Device-to-layout mapping
 │   └── device/                  # Device detection utilities
 │       └── useDeviceDetection.ts # Device type and orientation
 │
@@ -87,7 +87,7 @@ pages/index.vue → [Loading Screen] → GameController.initializeGame()
 User clicks "Start Game" → GameController.startNewGame()
 → SeedSystem.generateSeed() → CS2Data.getItemsForGame()
 → Game.initializeCards() → EngineCore.initializeCanvas()
-→ CardRenderer.renderCards() → [Game Playing State]
+→ OrientationGrid.calculateLayout() → CardRenderer.renderCards() → [Game Playing State]
 ```
 
 ### Card Selection Flow
@@ -100,11 +100,22 @@ User clicks card → GameCanvas.handleClick() → useGameController.handleCardCl
 
 ## 🎯 Key Architectural Principles
 
+- **Orientation-Aware Design**: Automatic layout adaptation based on screen orientation and device type
 - **Separation of Concerns**: UI, game logic, rendering, and data layers are independent
 - **Event-Driven Architecture**: Real-time synchronization between state and visuals
 - **Modular Engine**: Specialized modules for canvas, layout, device detection, and rendering
-- **Performance Optimization**: Object pooling, batched updates, and efficient rendering
-- **Device-Aware**: Responsive design with device-specific layout strategies
+- **Performance Optimization**: Object pooling, batched updates, and efficient rendering with device-specific optimizations
+- **Device-Aware**: Responsive design with orientation-based layout strategies
 - **Type Safety**: Full TypeScript integration with strict type checking
 - **Composable Design**: Reusable logic through Vue 3 Composition API
 - **Error Boundaries**: Graceful error handling at component and system levels
+
+## 🎨 Orientation-Based Layout System
+
+The new layout system provides:
+
+- **Portrait Strategy**: Optimized for vertical layouts with more rows
+- **Landscape Strategy**: Optimized for horizontal layouts with more columns
+- **Square Strategy**: Balanced symmetric layouts for square screens
+- **Performance Adaptation**: Dynamic constraint adjustment based on device capabilities
+- **Validation System**: Layout quality assessment with warnings and recommendations

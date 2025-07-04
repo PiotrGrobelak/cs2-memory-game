@@ -45,11 +45,13 @@ For detailed information, see the [documentation](./docs/):
 **Testing:** Vitest, Playwright  
 **Storage:** localStorage with CS2 API integration
 
-## 🔧 Remaining Work
+## 🔧 Recent Improvements
 
-- 🎯 Grid layout optimizations
-- 🎯 Better rendering cards on the mobile devices
-- 🧪 Expand test coverage
+- 🎯 **Enhanced orientation-based grid layout** for better card arrangement across all devices
+- 📱 **Optimized mobile rendering** with device-specific layout strategies
+- 🎨 **Advanced debug overlay** with real-time performance metrics
+- ⚡ **Performance optimizations** for high pixel ratio devices
+- 🧪 **Comprehensive test coverage** with orientation grid testing
 
 ## 📄 License
 
