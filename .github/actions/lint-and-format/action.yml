@@ -5,9 +5,9 @@ runs:
   using: "composite"
   steps:
     - name: Run linting
-      run: npm run lint:check
+      run: npm run lint:eslint
       shell: bash
 
     - name: Run format check
-      run: npm run format:check
+      run: npm run lint:prettier
       shell: bash
