@@ -136,7 +136,7 @@ export const useGameCoreStore = defineStore("game-core", () => {
   };
 
   const getDifficultyConfig = (
-    name: "easy" | "medium" | "hard"
+    name: "easy" | "medium" | "hard",
   ): DifficultyLevel => {
     const configs = {
       easy: {

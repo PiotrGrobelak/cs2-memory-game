@@ -18,7 +18,7 @@ describe("useOrientationGrid", () => {
     width: number,
     height: number,
     cardCount: number,
-    constraints = defaultConstraints
+    constraints = defaultConstraints,
   ): OrientationGridConfig => ({
     containerWidth: width,
     containerHeight: height,
@@ -103,16 +103,16 @@ describe("useOrientationGrid", () => {
 
       expect(layout).toBeTruthy();
       expect(layout!.cardDimensions.width).toBeGreaterThanOrEqual(
-        strictConstraints.minCardSize
+        strictConstraints.minCardSize,
       );
       expect(layout!.cardDimensions.width).toBeLessThanOrEqual(
-        strictConstraints.maxCardSize
+        strictConstraints.maxCardSize,
       );
       expect(layout!.cardDimensions.height).toBeGreaterThanOrEqual(
-        strictConstraints.minCardSize
+        strictConstraints.minCardSize,
       );
       expect(layout!.cardDimensions.height).toBeLessThanOrEqual(
-        strictConstraints.maxCardSize
+        strictConstraints.maxCardSize,
       );
     });
 
@@ -167,7 +167,7 @@ describe("useOrientationGrid", () => {
 
       if (layout.efficiency < 0.75) {
         expect(
-          validation.warnings.some((warning) => warning.includes("efficiency"))
+          validation.warnings.some((warning) => warning.includes("efficiency")),
         ).toBe(true);
       }
     });

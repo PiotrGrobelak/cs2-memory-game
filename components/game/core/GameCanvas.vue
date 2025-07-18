@@ -41,10 +41,10 @@ import { useParallaxEffect } from "~/composables/engine/canvas/useParallaxEffect
 import { useCardRenderer } from "~/composables/engine/canvas/useCardRenderer";
 
 const LoadingOverlay = defineAsyncComponent(
-  () => import("~/components/game/ui/overlays/LoadingOverlay.vue")
+  () => import("~/components/game/ui/overlays/LoadingOverlay.vue"),
 );
 const ErrorOverlay = defineAsyncComponent(
-  () => import("~/components/game/ui/overlays/ErrorOverlay.vue")
+  () => import("~/components/game/ui/overlays/ErrorOverlay.vue"),
 );
 const DebugOverlay = defineAsyncComponent({
   loader: () => import("~/components/game/ui/overlays/DebugOverlay.vue"),
@@ -144,7 +144,7 @@ const createPixiApp = async (): Promise<Application> => {
 
   if (width === 0 || height === 0) {
     throw new Error(
-      "Container dimensions not available. Please ensure the container has proper width and height."
+      "Container dimensions not available. Please ensure the container has proper width and height.",
     );
   }
 
@@ -228,7 +228,7 @@ const renderCards = async () => {
           layout.cardDimensions.width,
           layout.cardDimensions.height,
           isInteractive.value,
-          handleCardClick
+          handleCardClick,
         );
         if (cardContainer) {
           cardsContainer.addChild(cardContainer);
@@ -238,18 +238,18 @@ const renderCards = async () => {
           parallaxEffect.addParallaxTarget(
             card.id,
             cardContainer,
-            parallaxDepth
+            parallaxDepth,
           );
 
           const cleanupFn = parallaxEffect.setupCardEventListeners(
             card.id,
-            cardContainer
+            cardContainer,
           );
           if (cleanupFn) {
             cardCleanupFunctions.value.set(card.id, cleanupFn);
           }
         }
-      })
+      }),
     );
   } catch (err) {
     console.error("Error rendering cards:", err);
@@ -295,7 +295,7 @@ watch(
       await renderCards();
     }
   },
-  { deep: true }
+  { deep: true },
 );
 
 onUnmounted(() => {

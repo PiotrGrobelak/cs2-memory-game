@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  useOrientationMapper,
   getConstraintsForDevice,
   getEnhancedConstraints,
   mapDeviceOrientationToScreen,
@@ -72,7 +71,7 @@ describe("useOrientationMapper", () => {
       const enhanced = getEnhancedConstraints(
         "mobile",
         highPixelRatioCapabilities,
-        "portrait"
+        "portrait",
       );
 
       // Should reduce sizes for high pixel ratio (performance optimization)
@@ -92,15 +91,15 @@ describe("useOrientationMapper", () => {
       const enhanced = getEnhancedConstraints(
         "mobile",
         touchCapabilities,
-        "portrait"
+        "portrait",
       );
 
       // Should increase sizes for touch devices (better usability)
       expect(enhanced.minCardSize).toBeGreaterThanOrEqual(
-        baseConstraints.minCardSize
+        baseConstraints.minCardSize,
       );
       expect(enhanced.maxCardSize).toBeGreaterThanOrEqual(
-        baseConstraints.maxCardSize
+        baseConstraints.maxCardSize,
       );
     });
 
@@ -108,7 +107,7 @@ describe("useOrientationMapper", () => {
       const enhanced = getEnhancedConstraints(
         "desktop",
         mockCapabilities,
-        "landscape"
+        "landscape",
       );
       const base = getConstraintsForDevice("desktop");
 
@@ -120,7 +119,7 @@ describe("useOrientationMapper", () => {
       const enhanced = getEnhancedConstraints(
         "desktop",
         mockCapabilities,
-        "square"
+        "square",
       );
       const base = getConstraintsForDevice("desktop");
 
@@ -169,7 +168,7 @@ describe("useOrientationMapper", () => {
         800,
         600,
         12,
-        mockCapabilities
+        mockCapabilities,
       );
 
       expect(config).toHaveProperty("containerWidth", 800);
@@ -192,7 +191,7 @@ describe("useOrientationMapper", () => {
         400,
         800,
         8,
-        mockCapabilities
+        mockCapabilities,
       );
 
       expect(config.metadata.aspectRatio).toBe(0.5);
@@ -223,10 +222,10 @@ describe("useOrientationMapper", () => {
       expect(validation1.isValid).toBe(false);
       expect(validation2.isValid).toBe(false);
       expect(validation1.errors[0]).toContain(
-        "Card count must be between 1 and 100"
+        "Card count must be between 1 and 100",
       );
       expect(validation2.errors[0]).toContain(
-        "Card count must be between 1 and 100"
+        "Card count must be between 1 and 100",
       );
     });
 
@@ -235,8 +234,8 @@ describe("useOrientationMapper", () => {
 
       expect(
         validation.warnings.some((warning) =>
-          warning.includes("Very wide aspect ratio")
-        )
+          warning.includes("Very wide aspect ratio"),
+        ),
       ).toBe(true);
     });
 
@@ -245,8 +244,8 @@ describe("useOrientationMapper", () => {
 
       expect(
         validation.warnings.some((warning) =>
-          warning.includes("Small container width for desktop")
-        )
+          warning.includes("Small container width for desktop"),
+        ),
       ).toBe(true);
     });
 
@@ -255,7 +254,7 @@ describe("useOrientationMapper", () => {
 
       expect(validation.isValid).toBe(false);
       expect(
-        validation.errors.some((error) => error.includes("Cannot fit"))
+        validation.errors.some((error) => error.includes("Cannot fit")),
       ).toBe(true);
     });
   });
@@ -271,7 +270,7 @@ describe("useOrientationMapper", () => {
       const optimized = getPerformanceOptimizedConstraints(
         baseConstraints,
         highPixelCapabilities,
-        12
+        12,
       );
 
       expect(optimized.minCardSize).toBeLessThan(baseConstraints.minCardSize);
@@ -288,7 +287,7 @@ describe("useOrientationMapper", () => {
       const optimized = getPerformanceOptimizedConstraints(
         baseConstraints,
         lowPixelCapabilities,
-        30 // High card count
+        30, // High card count
       );
 
       expect(optimized.minCardSize).toBeLessThan(baseConstraints.minCardSize);
@@ -305,7 +304,7 @@ describe("useOrientationMapper", () => {
       const optimized = getPerformanceOptimizedConstraints(
         baseConstraints,
         optimalCapabilities,
-        10 // Low card count
+        10, // Low card count
       );
 
       expect(optimized.minCardSize).toBe(baseConstraints.minCardSize);

@@ -50,14 +50,14 @@
           class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
           @click="loadRandomWeapons"
         >
-          <i class="pi pi-refresh mr-2"></i>
+          <i class="pi pi-refresh mr-2" />
           Load New Weapons
         </button>
         <button
           class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-lg"
           @click="resetGrid"
         >
-          <i class="pi pi-replay mr-2"></i>
+          <i class="pi pi-replay mr-2" />
           Reset All Cards
         </button>
       </div>
@@ -131,7 +131,7 @@ const loadRandomWeapons = async () => {
       selectedWeapons.value = weapons;
       console.log(
         "Selected weapons for bounce animation:",
-        selectedWeapons.value
+        selectedWeapons.value,
       );
     } else {
       throw new Error("No weapons available for bounce animation");

@@ -15,22 +15,22 @@ export const useGameCardsStore = defineStore("game-cards", () => {
   const selectedCards = ref<string[]>([]);
 
   const revealedCards = computed(() =>
-    cards.value.filter((card) => card.state === "revealed")
+    cards.value.filter((card) => card.state === "revealed"),
   );
 
   const matchedCards = computed(() =>
-    cards.value.filter((card) => card.state === "matched")
+    cards.value.filter((card) => card.state === "matched"),
   );
 
   const hiddenCards = computed(() =>
-    cards.value.filter((card) => card.state === "hidden")
+    cards.value.filter((card) => card.state === "hidden"),
   );
 
   const selectedCardsData = computed(
     () =>
       selectedCards.value
         .map((cardId) => cards.value.find((card) => card.id === cardId))
-        .filter(Boolean) as GameCard[]
+        .filter(Boolean) as GameCard[],
   );
 
   const selectCard = (cardId: string): boolean => {
@@ -103,7 +103,7 @@ export const useGameCardsStore = defineStore("game-cards", () => {
   const generateCards = async (
     difficulty: DifficultyLevel,
     seed: string,
-    cs2Items: CS2Item[] = []
+    cs2Items: CS2Item[] = [],
   ): Promise<void> => {
     cards.value = [];
     selectedCards.value = [];
@@ -202,7 +202,7 @@ export const useGameCardsStore = defineStore("game-cards", () => {
   const shuffleCards = (
     cardsArray: GameCard[],
     seed: string,
-    gridSize: { rows: number; cols: number }
+    gridSize: { rows: number; cols: number },
   ): void => {
     let currentIndex = cardsArray.length;
     let randomIndex: number;
@@ -263,7 +263,7 @@ export const useGameCardsStore = defineStore("game-cards", () => {
   const validateAndFixAdjacentPairs = (
     cardsArray: GameCard[],
     seed: string,
-    gridSize: { rows: number; cols: number }
+    gridSize: { rows: number; cols: number },
   ): void => {
     const gridCols = gridSize.cols;
     let attempts = 0;
@@ -274,7 +274,7 @@ export const useGameCardsStore = defineStore("game-cards", () => {
         seed.split("").reduce((a, b) => {
           a = (a << 5) - a + b.charCodeAt(0);
           return a & a;
-        }, 0)
+        }, 0),
       ) || 1;
 
     const seededRandom = () => {
@@ -325,14 +325,14 @@ export const useGameCardsStore = defineStore("game-cards", () => {
 
     if (attempts >= maxAttempts) {
       console.warn(
-        `Could not eliminate all adjacent pairs after ${maxAttempts} attempts`
+        `Could not eliminate all adjacent pairs after ${maxAttempts} attempts`,
       );
     }
   };
 
   const setCardPositions = (
     cardsArray: GameCard[],
-    gridSize: { rows: number; cols: number }
+    gridSize: { rows: number; cols: number },
   ): void => {
     cardsArray.forEach((card, index) => {
       const row = Math.floor(index / gridSize.cols);

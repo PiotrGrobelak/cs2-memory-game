@@ -63,7 +63,7 @@ export const useGame = () => {
 
     await cardsStore.generateCards(
       coreStore.difficultySettings,
-      coreStore.seed
+      coreStore.seed,
     );
 
     timerStore.resetTimer();

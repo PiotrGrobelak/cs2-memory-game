@@ -25,7 +25,7 @@ describe("useGamePersistence", () => {
 
   describe("saveGameState", () => {
     const createMockGameState = (
-      overrides: Partial<GameState> = {}
+      overrides: Partial<GameState> = {},
     ): GameState => {
       const difficulty: DifficultyLevel = {
         name: "easy",
@@ -126,12 +126,12 @@ describe("useGamePersistence", () => {
 
       // Matched cards should remain matched
       const matchedCards = savedCards.filter(
-        (card: { state: string }) => card.state === "matched"
+        (card: { state: string }) => card.state === "matched",
       );
       expect(matchedCards).toHaveLength(1);
 
       const matchedCard = savedCards.find(
-        (card: { id: string }) => card.id === "card-3"
+        (card: { id: string }) => card.id === "card-3",
       );
       expect(matchedCard.state).toBe("matched");
     });
@@ -188,7 +188,7 @@ describe("useGamePersistence", () => {
 
   describe("loadGameState", () => {
     const createMockGameState = (
-      overrides: Partial<GameState> = {}
+      overrides: Partial<GameState> = {},
     ): GameState => {
       const difficulty: DifficultyLevel = {
         name: "easy",
@@ -277,7 +277,7 @@ describe("useGamePersistence", () => {
 
       // Verify revealed cards were filtered out
       const revealedCards = loadedState!.cards.filter(
-        (card) => card.state === "revealed"
+        (card) => card.state === "revealed",
       );
 
       // Returned state should have 1 revealed card and 2 selected cards

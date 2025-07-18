@@ -172,7 +172,7 @@ describe("Game Cards Store", () => {
 
       // Same seed should produce same card order
       expect(store1.cards.map((c) => c.pairId)).toEqual(
-        store2.cards.map((c) => c.pairId)
+        store2.cards.map((c) => c.pairId),
       );
     });
 
@@ -234,7 +234,7 @@ describe("Game Cards Store", () => {
 
       // Check that we have different categories
       const categories = new Set(
-        store.cards.map((card) => card.cs2Item.category)
+        store.cards.map((card) => card.cs2Item.category),
       );
       expect(categories.size).toBeGreaterThan(1);
     });
@@ -335,7 +335,7 @@ describe("Game Cards Store", () => {
       // Find two cards with the same pairId
       const firstCard = store.cards[0];
       const matchingCard = store.cards.find(
-        (card) => card.pairId === firstCard.pairId && card.id !== firstCard.id
+        (card) => card.pairId === firstCard.pairId && card.id !== firstCard.id,
       )!;
 
       // Select both cards
@@ -357,7 +357,7 @@ describe("Game Cards Store", () => {
       // Find two cards with different pairIds
       const firstCard = store.cards[0];
       const nonMatchingCard = store.cards.find(
-        (card) => card.pairId !== firstCard.pairId
+        (card) => card.pairId !== firstCard.pairId,
       )!;
 
       // Select both cards
@@ -420,7 +420,7 @@ describe("Game Cards Store", () => {
 
       expect(store.revealedCards).toHaveLength(2);
       expect(
-        store.revealedCards.every((card) => card.state === "revealed")
+        store.revealedCards.every((card) => card.state === "revealed"),
       ).toBe(true);
     });
 
@@ -433,7 +433,7 @@ describe("Game Cards Store", () => {
 
       expect(store.matchedCards).toHaveLength(2);
       expect(store.matchedCards.every((card) => card.state === "matched")).toBe(
-        true
+        true,
       );
     });
 
@@ -446,7 +446,7 @@ describe("Game Cards Store", () => {
 
       expect(store.hiddenCards).toHaveLength(10);
       expect(store.hiddenCards.every((card) => card.state === "hidden")).toBe(
-        true
+        true,
       );
     });
   });

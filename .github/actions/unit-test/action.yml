@@ -1,0 +1,15 @@
+name: "Run Unit Tests"
+description: "Run unit tests with optional coverage reporting"
+
+inputs:
+  with-coverage:
+    description: "Whether to run tests with coverage"
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run unit tests
+      run: ${{ inputs.with-coverage == 'true' && 'npm run test:coverage' || 'npm run test' }}
+      shell: bash

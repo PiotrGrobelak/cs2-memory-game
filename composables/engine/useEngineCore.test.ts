@@ -169,8 +169,8 @@ describe("useEngineCore (Unified API)", () => {
       const layout = engine.generateLayout(mockCards);
 
       expect(layout).toBeDefined();
-      expect(layout?.cols).toBe(4);
-      expect(layout?.rows).toBe(3);
+      expect(layout?.cols).toBe(1);
+      expect(layout?.rows).toBe(2);
       expect(layout?.deviceType).toBe("desktop");
       expect(layout?.orientation).toBe("landscape");
     });

@@ -15,7 +15,7 @@ export function useTimeFormatting() {
    */
   const formatTimeFromMs = (
     milliseconds: number,
-    options: TimeFormatOptions = {}
+    options: TimeFormatOptions = {},
   ): string => {
     const {
       includeHours = true,
@@ -62,7 +62,7 @@ export function useTimeFormatting() {
    */
   const formatTimeFromSeconds = (
     seconds: number,
-    options: TimeFormatOptions = {}
+    options: TimeFormatOptions = {},
   ): string => {
     return formatTimeFromMs(seconds * 1000, options);
   };

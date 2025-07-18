@@ -182,7 +182,7 @@ export const useSeedSystem = () => {
   };
 
   const validateSeed = (
-    seed: string
+    seed: string,
   ): { isValid: boolean; error: string | null } => {
     if (!seed) {
       return { isValid: false, error: "Seed cannot be empty" };
@@ -277,7 +277,7 @@ export const useSeedSystem = () => {
       if (typeof localStorage !== "undefined") {
         localStorage.setItem(
           "cs2-memory-seed-history",
-          JSON.stringify(state.value.seedHistory)
+          JSON.stringify(state.value.seedHistory),
         );
       }
     } catch (error) {

@@ -28,7 +28,7 @@ export function useHistoryFilters(gameHistory: Readonly<Ref<GameResult[]>>) {
     return games.filter(
       (game) =>
         game.seed.toLowerCase().includes(query) ||
-        game.id.toLowerCase().includes(query)
+        game.id.toLowerCase().includes(query),
     );
   };
 

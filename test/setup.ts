@@ -58,7 +58,7 @@ vi.stubGlobal(
       console.log("getContext", contextId);
       return canvasContextMock;
     }
-  }
+  },
 );
 
 // Mock Audio API for game sounds tests
@@ -83,7 +83,7 @@ vi.stubGlobal(
     constructor(src?: string) {
       if (src) this.src = src;
     }
-  }
+  },
 );
 
 vi.stubGlobal(
@@ -103,7 +103,7 @@ vi.stubGlobal(
     ended = false;
     muted = false;
     readyState = 4; // HAVE_ENOUGH_DATA
-  }
+  },
 );
 
 // Configure Vue Test Utils with Pinia

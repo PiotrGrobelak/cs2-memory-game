@@ -37,10 +37,10 @@ export const useParallaxEffect = ({
   const isDesktop = computed(() => deviceType === "desktop");
   const isMobile = computed(() => deviceType === "mobile");
   const shouldUseMouseParallax = computed(
-    () => isDesktop.value && !isTouchDevice
+    () => isDesktop.value && !isTouchDevice,
   );
   const shouldUseOrientationParallax = computed(
-    () => isMobile.value && isTouchDevice
+    () => isMobile.value && isTouchDevice,
   );
 
   const initializeParallax = () => {
@@ -52,7 +52,7 @@ export const useParallaxEffect = ({
   const addParallaxTarget = (
     id: string,
     sprite: Container | Sprite,
-    depth: number = 0.5
+    depth: number = 0.5,
   ) => {
     parallaxTargets.value.set(id, {
       sprite,
@@ -76,7 +76,7 @@ export const useParallaxEffect = ({
   const applyParallaxToCard = (
     cardId: string,
     offsetX: number,
-    offsetY: number
+    offsetY: number,
   ) => {
     const target = parallaxTargets.value.get(cardId);
     if (!target || !parallaxState.value.enabled) return;
@@ -106,7 +106,7 @@ export const useParallaxEffect = ({
   const handleCardMouseMove = (
     cardId: string,
     event: MouseEvent,
-    cardElement: HTMLElement | Container
+    cardElement: HTMLElement | Container,
   ) => {
     if (!shouldUseMouseParallax.value || !parallaxState.value.enabled) return;
 
@@ -160,7 +160,7 @@ export const useParallaxEffect = ({
   const handlePixiPointerMove = (
     cardId: string,
     event: FederatedPointerEvent,
-    cardElement: Container
+    cardElement: Container,
   ) => {
     if (!parallaxState.value.enabled) return;
 
@@ -198,7 +198,7 @@ export const useParallaxEffect = ({
   const handleCardTouchMove = (
     cardId: string,
     event: TouchEvent,
-    cardElement: HTMLElement | Container
+    cardElement: HTMLElement | Container,
   ) => {
     if (!event.touches.length) return;
 
@@ -229,11 +229,11 @@ export const useParallaxEffect = ({
 
     const normalizedX = Math.max(
       -1,
-      Math.min(1, deviceOrientation.value.gamma / maxTilt)
+      Math.min(1, deviceOrientation.value.gamma / maxTilt),
     );
     const normalizedY = Math.max(
       -1,
-      Math.min(1, deviceOrientation.value.beta / maxTilt)
+      Math.min(1, deviceOrientation.value.beta / maxTilt),
     );
 
     const offsetX = normalizedX * maxOffset;
@@ -266,7 +266,7 @@ export const useParallaxEffect = ({
             if (response === "granted") {
               window.addEventListener(
                 "deviceorientation",
-                handleDeviceOrientation
+                handleDeviceOrientation,
               );
             }
           })
@@ -282,7 +282,7 @@ export const useParallaxEffect = ({
 
   const setupCardEventListeners = (
     cardId: string,
-    cardElement: Container | HTMLElement
+    cardElement: Container | HTMLElement,
   ) => {
     if (!parallaxState.value.enabled) return;
 
@@ -302,7 +302,6 @@ export const useParallaxEffect = ({
     const handleTouchStart = (event: TouchEvent) => {
       // Touch started - prepare for parallax, set initial position
       if (event.touches.length > 0) {
-        const touch = event.touches[0];
         // Store initial touch position for potential parallax calculation
         const target = parallaxTargets.value.get(cardId);
         if (target) {
@@ -334,7 +333,7 @@ export const useParallaxEffect = ({
       });
 
       // Simple touch support - pointerdown/up works for both mouse and touch
-      pixiContainer.on("pointerdown", (event: FederatedPointerEvent) => {
+      pixiContainer.on("pointerdown", () => {
         const target = parallaxTargets.value.get(cardId);
         if (target && isMobile.value) {
           target.isActive = true;

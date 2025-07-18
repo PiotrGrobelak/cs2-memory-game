@@ -19,7 +19,7 @@ export class ImageLoader {
    */
   async loadImage(
     url: string,
-    options: ImageLoadOptions = {}
+    options: ImageLoadOptions = {},
   ): Promise<HTMLImageElement> {
     // Return cached image if available and loaded
     const cached = this.cache.get(url);
@@ -71,7 +71,7 @@ export class ImageLoader {
    */
   private createImageLoadPromise(
     url: string,
-    options: ImageLoadOptions
+    options: ImageLoadOptions,
   ): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -119,10 +119,10 @@ export class ImageLoader {
    */
   async preloadImages(
     urls: string[],
-    options: ImageLoadOptions = {}
+    options: ImageLoadOptions = {},
   ): Promise<{ loaded: HTMLImageElement[]; failed: string[] }> {
     const results = await Promise.allSettled(
-      urls.map((url) => this.loadImage(url, options))
+      urls.map((url) => this.loadImage(url, options)),
     );
 
     const loaded: HTMLImageElement[] = [];

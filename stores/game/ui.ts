@@ -47,7 +47,7 @@ export const useGameUIStore = defineStore("gameUI", () => {
 
   const updateUIOption = <K extends keyof typeof uiOptions>(
     key: K,
-    value: (typeof uiOptions)[K]["value"]
+    value: (typeof uiOptions)[K]["value"],
   ) => {
     uiOptions[key].value = value;
   };

@@ -84,7 +84,7 @@ const determineOrientation = (aspectRatio: number): ScreenOrientation => {
 const calculateAvailableSpace = (
   containerWidth: number,
   containerHeight: number,
-  padding: number
+  padding: number,
 ) => ({
   width: containerWidth - padding * 2,
   height: containerHeight - padding * 2,
@@ -97,7 +97,7 @@ const calculateAvailableSpace = (
 const landscapeStrategy = (
   cardCount: number,
   availableSpace: { width: number; height: number },
-  constraints: GridConstraints
+  constraints: GridConstraints,
 ): OrientationGridResult => {
   const { width, height } = availableSpace;
 
@@ -129,16 +129,16 @@ const landscapeStrategy = (
     constraints.maxCardSize,
     Math.max(
       constraints.minCardSize,
-      (width - (cols - 1) * constraints.minSpacing) / cols
-    )
+      (width - (cols - 1) * constraints.minSpacing) / cols,
+    ),
   );
 
   const cardHeight = Math.min(
     constraints.maxCardSize,
     Math.max(
       constraints.minCardSize,
-      (height - (rows - 1) * constraints.minSpacing) / rows
-    )
+      (height - (rows - 1) * constraints.minSpacing) / rows,
+    ),
   );
 
   // Adapt card proportions - slightly wider in landscape
@@ -151,8 +151,8 @@ const landscapeStrategy = (
           constraints.minSpacing,
           Math.min(
             constraints.maxSpacing,
-            (width - cols * adaptedCardWidth) / (cols - 1)
-          )
+            (width - cols * adaptedCardWidth) / (cols - 1),
+          ),
         )
       : 0;
   const spacingY =
@@ -161,8 +161,8 @@ const landscapeStrategy = (
           constraints.minSpacing,
           Math.min(
             constraints.maxSpacing,
-            (height - rows * adaptedCardHeight) / (rows - 1)
-          )
+            (height - rows * adaptedCardHeight) / (rows - 1),
+          ),
         )
       : 0;
 
@@ -183,7 +183,7 @@ const landscapeStrategy = (
 const portraitStrategy = (
   cardCount: number,
   availableSpace: { width: number; height: number },
-  constraints: GridConstraints
+  constraints: GridConstraints,
 ): OrientationGridResult => {
   const { width, height } = availableSpace;
 
@@ -215,16 +215,16 @@ const portraitStrategy = (
     constraints.maxCardSize,
     Math.max(
       constraints.minCardSize,
-      (width - (cols - 1) * constraints.minSpacing) / cols
-    )
+      (width - (cols - 1) * constraints.minSpacing) / cols,
+    ),
   );
 
   const cardHeight = Math.min(
     constraints.maxCardSize,
     Math.max(
       constraints.minCardSize,
-      (height - (rows - 1) * constraints.minSpacing) / rows
-    )
+      (height - (rows - 1) * constraints.minSpacing) / rows,
+    ),
   );
 
   // Adapt card proportions - slightly taller in portrait
@@ -237,8 +237,8 @@ const portraitStrategy = (
           constraints.minSpacing,
           Math.min(
             constraints.maxSpacing,
-            (width - cols * adaptedCardWidth) / (cols - 1)
-          )
+            (width - cols * adaptedCardWidth) / (cols - 1),
+          ),
         )
       : 0;
   const spacingY =
@@ -247,8 +247,8 @@ const portraitStrategy = (
           constraints.minSpacing,
           Math.min(
             constraints.maxSpacing,
-            (height - rows * adaptedCardHeight) / (rows - 1)
-          )
+            (height - rows * adaptedCardHeight) / (rows - 1),
+          ),
         )
       : 0;
 
@@ -269,7 +269,7 @@ const portraitStrategy = (
 const squareStrategy = (
   cardCount: number,
   availableSpace: { width: number; height: number },
-  constraints: GridConstraints
+  constraints: GridConstraints,
 ): OrientationGridResult => {
   const { width, height } = availableSpace;
 
@@ -284,9 +284,9 @@ const squareStrategy = (
       constraints.minCardSize,
       Math.min(
         (width - (cols - 1) * constraints.minSpacing) / cols,
-        (height - (rows - 1) * constraints.minSpacing) / rows
-      )
-    )
+        (height - (rows - 1) * constraints.minSpacing) / rows,
+      ),
+    ),
   );
 
   // Square cards for square screens
@@ -299,8 +299,8 @@ const squareStrategy = (
           constraints.minSpacing,
           Math.min(
             constraints.maxSpacing,
-            (width - cols * cardWidth) / (cols - 1)
-          )
+            (width - cols * cardWidth) / (cols - 1),
+          ),
         )
       : 0;
   const spacingY =
@@ -309,8 +309,8 @@ const squareStrategy = (
           constraints.minSpacing,
           Math.min(
             constraints.maxSpacing,
-            (height - rows * cardHeight) / (rows - 1)
-          )
+            (height - rows * cardHeight) / (rows - 1),
+          ),
         )
       : 0;
 
@@ -328,11 +328,11 @@ const squareStrategy = (
  * Strategy selector based on orientation
  */
 const selectStrategy = (
-  orientation: ScreenOrientation
+  orientation: ScreenOrientation,
 ): ((
   cardCount: number,
   availableSpace: { width: number; height: number },
-  constraints: GridConstraints
+  constraints: GridConstraints,
 ) => OrientationGridResult) => {
   const strategies = {
     landscape: landscapeStrategy,
@@ -351,7 +351,7 @@ const calculateCardPosition = (
   gridResult: OrientationGridResult,
   availableSpace: { width: number; height: number },
   padding: number,
-  cardCount: number
+  cardCount: number,
 ): GridPosition => {
   const { cols, rows, cardWidth, cardHeight, spacingX, spacingY } = gridResult;
   const { width, height } = availableSpace;
@@ -405,7 +405,7 @@ export const useOrientationGrid = (config: OrientationGridConfig) => {
 
     if (containerWidth === 0 || containerHeight === 0) {
       console.warn(
-        "Container dimensions not available. Cannot generate layout."
+        "Container dimensions not available. Cannot generate layout.",
       );
       return null;
     }
@@ -419,7 +419,7 @@ export const useOrientationGrid = (config: OrientationGridConfig) => {
     const availableSpace = calculateAvailableSpace(
       containerWidth,
       containerHeight,
-      constraints.padding
+      constraints.padding,
     );
 
     // Get grid parameters from strategy
@@ -434,8 +434,8 @@ export const useOrientationGrid = (config: OrientationGridConfig) => {
           gridResult,
           availableSpace,
           constraints.padding,
-          cardCount
-        )
+          cardCount,
+        ),
       );
     }
 
@@ -472,7 +472,7 @@ export const useOrientationGrid = (config: OrientationGridConfig) => {
     // Check card size constraints
     if (layout.cardDimensions.width < constraints.minCardSize) {
       warnings.push(
-        `Cards are smaller than minimum size (${constraints.minCardSize}px)`
+        `Cards are smaller than minimum size (${constraints.minCardSize}px)`,
       );
     }
 
@@ -483,7 +483,7 @@ export const useOrientationGrid = (config: OrientationGridConfig) => {
     // Check grid efficiency
     if (layout.efficiency < 0.75) {
       warnings.push(
-        `Grid efficiency is low (${Math.round(layout.efficiency * 100)}%) - consider adjusting card count`
+        `Grid efficiency is low (${Math.round(layout.efficiency * 100)}%) - consider adjusting card count`,
       );
     }
 
@@ -522,7 +522,7 @@ export const useOrientationGrid = (config: OrientationGridConfig) => {
       easing: comparison.gridChanged ? "easeInOut" : "linear",
       staggerDelay: Math.min(
         20,
-        200 / Math.max(from.positions.length, to.positions.length)
+        200 / Math.max(from.positions.length, to.positions.length),
       ),
     };
   };

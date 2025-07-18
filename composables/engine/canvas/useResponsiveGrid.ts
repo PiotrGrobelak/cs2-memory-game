@@ -39,7 +39,7 @@ export const useResponsiveGrid = (app: Application) => {
       Math.abs(current.cardDimensions.width - newLayout.cardDimensions.width) >
         1 ||
       Math.abs(
-        current.cardDimensions.height - newLayout.cardDimensions.height
+        current.cardDimensions.height - newLayout.cardDimensions.height,
       ) > 1
     );
   };
@@ -55,7 +55,7 @@ export const useResponsiveGrid = (app: Application) => {
   const updateLayout = (
     cards: GameCard[],
     layout: GridLayout,
-    forceRedraw = false
+    forceRedraw = false,
   ): GridLayout => {
     if (forceRedraw || !currentLayout.value || hasLayoutChanged(layout)) {
       redrawGrid();

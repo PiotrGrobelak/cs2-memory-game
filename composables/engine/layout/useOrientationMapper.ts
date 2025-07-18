@@ -6,7 +6,7 @@ import type { GridConstraints, ScreenOrientation } from "./useOrientationGrid";
  * Map device type to orientation-based constraints
  */
 export const getConstraintsForDevice = (
-  deviceType: DeviceType
+  deviceType: DeviceType,
 ): GridConstraints => {
   const constraintMap: Record<DeviceType, GridConstraints> = {
     mobile: {
@@ -41,7 +41,7 @@ export const getConstraintsForDevice = (
 export const getEnhancedConstraints = (
   deviceType: DeviceType,
   capabilities: DeviceCapabilities,
-  screenOrientation: ScreenOrientation
+  screenOrientation: ScreenOrientation,
 ): GridConstraints => {
   const baseConstraints = getConstraintsForDevice(deviceType);
 
@@ -78,26 +78,26 @@ export const getEnhancedConstraints = (
       baseConstraints.minCardSize *
         adjustments.minCardSizeMultiplier *
         performanceMultiplier *
-        touchDeviceMultiplier
+        touchDeviceMultiplier,
     ),
     maxCardSize: Math.round(
       baseConstraints.maxCardSize *
         adjustments.maxCardSizeMultiplier *
         performanceMultiplier *
-        touchDeviceMultiplier
+        touchDeviceMultiplier,
     ),
     minSpacing: Math.round(
       baseConstraints.minSpacing *
         adjustments.spacingMultiplier *
-        touchDeviceMultiplier
+        touchDeviceMultiplier,
     ),
     maxSpacing: Math.round(
       baseConstraints.maxSpacing *
         adjustments.spacingMultiplier *
-        touchDeviceMultiplier
+        touchDeviceMultiplier,
     ),
     padding: Math.round(
-      baseConstraints.padding * adjustments.paddingMultiplier
+      baseConstraints.padding * adjustments.paddingMultiplier,
     ),
   };
 };
@@ -107,7 +107,7 @@ export const getEnhancedConstraints = (
  */
 export const mapDeviceOrientationToScreen = (
   deviceOrientation: DeviceOrientation,
-  aspectRatio: number
+  aspectRatio: number,
 ): ScreenOrientation => {
   // First, check aspect ratio for more accurate orientation detection
   if (aspectRatio < 0.8) return "portrait";
@@ -130,17 +130,17 @@ export const getOptimalGridConfig = (
   containerWidth: number,
   containerHeight: number,
   cardCount: number,
-  capabilities: DeviceCapabilities
+  capabilities: DeviceCapabilities,
 ) => {
   const aspectRatio = containerWidth / containerHeight;
   const screenOrientation = mapDeviceOrientationToScreen(
     deviceOrientation,
-    aspectRatio
+    aspectRatio,
   );
   const constraints = getEnhancedConstraints(
     deviceType,
     capabilities,
-    screenOrientation
+    screenOrientation,
   );
 
   return {
@@ -165,7 +165,7 @@ export const validateDeviceConfig = (
   deviceType: DeviceType,
   containerWidth: number,
   containerHeight: number,
-  cardCount: number
+  cardCount: number,
 ) => {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -185,7 +185,7 @@ export const validateDeviceConfig = (
 
   if (deviceType === "mobile" && aspectRatio > 2.5) {
     warnings.push(
-      "Very wide aspect ratio on mobile device may cause layout issues"
+      "Very wide aspect ratio on mobile device may cause layout issues",
     );
   }
 
@@ -199,7 +199,7 @@ export const validateDeviceConfig = (
 
   if (maxCardsPerRow * maxCardsPerCol < cardCount) {
     errors.push(
-      `Cannot fit ${cardCount} cards with minimum size ${constraints.minCardSize}px in container ${containerWidth}x${containerHeight}`
+      `Cannot fit ${cardCount} cards with minimum size ${constraints.minCardSize}px in container ${containerWidth}x${containerHeight}`,
     );
   }
 
@@ -217,7 +217,7 @@ export const validateDeviceConfig = (
 export const getPerformanceOptimizedConstraints = (
   baseConstraints: GridConstraints,
   capabilities: DeviceCapabilities,
-  cardCount: number
+  cardCount: number,
 ): GridConstraints => {
   // Reduce constraints for high card counts on low-performance devices
   const performanceFactor = capabilities.pixelRatio > 2 ? 0.9 : 1.0;

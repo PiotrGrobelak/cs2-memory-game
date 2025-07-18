@@ -70,7 +70,7 @@ export const useEngineCore = (config: PixiResponsiveConfig) => {
 
     if (width === 0 || height === 0) {
       console.warn(
-        "Container dimensions not available. Cannot generate layout."
+        "Container dimensions not available. Cannot generate layout.",
       );
       return null;
     }
@@ -79,13 +79,13 @@ export const useEngineCore = (config: PixiResponsiveConfig) => {
       config.deviceType,
       width,
       height,
-      cards.length
+      cards.length,
     );
 
     if (!validation.isValid) {
       console.error(
         "Device configuration validation failed:",
-        validation.errors
+        validation.errors,
       );
       return null;
     }
@@ -101,7 +101,7 @@ export const useEngineCore = (config: PixiResponsiveConfig) => {
       width,
       height,
       cards.length,
-      config.deviceCapabilities
+      config.deviceCapabilities,
     );
 
     // Create orientation grid instance
@@ -122,11 +122,11 @@ export const useEngineCore = (config: PixiResponsiveConfig) => {
 
   const renderCards = (
     cards: GameCard[],
-    forceRedraw = false
+    forceRedraw = false,
   ): GridLayout | null => {
     if (!pixiGrid) {
       console.warn(
-        "Pixi grid not initialized. Use generateLayout for layout calculation only."
+        "Pixi grid not initialized. Use generateLayout for layout calculation only.",
       );
       return generateLayout(cards);
     }
@@ -168,20 +168,20 @@ export const useEngineCore = (config: PixiResponsiveConfig) => {
     // Check card size constraints
     if (layout.cardDimensions.width < deviceSettings.minCardSize) {
       warnings.push(
-        `Cards are smaller than recommended minimum (${deviceSettings.minCardSize}px)`
+        `Cards are smaller than recommended minimum (${deviceSettings.minCardSize}px)`,
       );
     }
 
     if (layout.cardDimensions.width > deviceSettings.maxCardSize) {
       warnings.push(
-        `Cards exceed recommended maximum (${deviceSettings.maxCardSize}px)`
+        `Cards exceed recommended maximum (${deviceSettings.maxCardSize}px)`,
       );
     }
 
     // Check grid efficiency
     if (layout.efficiency < 0.75) {
       warnings.push(
-        `Grid efficiency is low (${Math.round(layout.efficiency * 100)}%) - consider adjusting card count`
+        `Grid efficiency is low (${Math.round(layout.efficiency * 100)}%) - consider adjusting card count`,
       );
     }
 

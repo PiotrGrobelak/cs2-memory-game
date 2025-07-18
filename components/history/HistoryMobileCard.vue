@@ -88,6 +88,6 @@ const formattedScore = computed(() => formatScore(props.game.score));
 const formattedTimeElapsed = computed(() => formatTime(props.game.timeElapsed));
 const shortSeed = computed(() => getShortSeed(props.game.seed));
 const difficultySeverity = computed(() =>
-  getDifficultySeverity(props.game.difficulty)
+  getDifficultySeverity(props.game.difficulty),
 );
 </script>

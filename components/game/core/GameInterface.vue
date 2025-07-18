@@ -99,14 +99,14 @@ import GameLoadingState from "./GameLoadingState.vue";
 import GameEmptyState from "./GameEmptyState.vue";
 
 const ResizeOverlay = defineAsyncComponent(
-  () => import("../ui/overlays/ResizeOverlay.vue")
+  () => import("../ui/overlays/ResizeOverlay.vue"),
 );
 
 const NewGameDialog = defineAsyncComponent(
-  () => import("../dialogs/NewGameDialog.vue")
+  () => import("../dialogs/NewGameDialog.vue"),
 );
 const SettingsDialog = defineAsyncComponent(
-  () => import("../dialogs/SettingsDialog.vue")
+  () => import("../dialogs/SettingsDialog.vue"),
 );
 
 // Canvas management - moved from CanvasContainer
@@ -149,7 +149,7 @@ const {
 // Canvas state logic - moved from CanvasContainer
 const hasCards = computed(() => cardsStore.cards.length > 0);
 const isCanvasLoading = computed(
-  () => state.value.isLoading || !isComponentMounted.value
+  () => state.value.isLoading || !isComponentMounted.value,
 );
 
 const shouldShowCanvas = computed(() => {
@@ -164,7 +164,7 @@ const onCanvasReady = () => {
   state.value.showFallbackUI = false;
 };
 
-const onCanvasError = (error?: string) => {
+const onCanvasError = () => {
   isCanvasReady.value = false;
   state.value.showFallbackUI = true;
 };
@@ -183,7 +183,7 @@ watch(
     if (cardsStore.cards.length === 0) {
       isCanvasReady.value = false;
     }
-  }
+  },
 );
 
 watch([gameAreaWidth, gameAreaHeight], (newSize, oldSize) => {

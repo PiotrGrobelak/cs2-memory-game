@@ -19,7 +19,7 @@ export function useHistoryData() {
       const history = await loadGameHistory();
       gameHistory.value = history.sort(
         (a, b) =>
-          new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
+          new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime(),
       );
     } catch (error) {
       console.error("Error loading game history:", error);

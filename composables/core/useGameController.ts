@@ -169,7 +169,7 @@ export const useGameController = () => {
   const canShare = computed(() => cardsStore.cards.length > 0);
 
   const isGameReady = computed(
-    () => !state.value.isLoading && cardsStore.cards.length > 0
+    () => !state.value.isLoading && cardsStore.cards.length > 0,
   );
 
   const canResumeGame = computed(() => {
@@ -561,7 +561,7 @@ export const useGameController = () => {
           await deleteGameState();
           state.value.hasUnfinishedGame = false;
         }
-      }
+      },
     );
 
     watch(
@@ -569,7 +569,7 @@ export const useGameController = () => {
       (newTimeElapsed) => {
         const timeInSeconds = Math.floor(newTimeElapsed / 1000);
         coreStore.updateTimeElapsed(timeInSeconds);
-      }
+      },
     );
 
     watch(
@@ -579,7 +579,7 @@ export const useGameController = () => {
           await autoSaveGameState();
         }
       },
-      { deep: true }
+      { deep: true },
     );
 
     watch(
@@ -594,7 +594,7 @@ export const useGameController = () => {
             }
           }, 30000); // 30 seconds
         }
-      }
+      },
     );
   };
 

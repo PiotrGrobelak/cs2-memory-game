@@ -15,7 +15,7 @@ export const useCardRenderer = (
   {
     deviceType,
     deviceCapabilities,
-  }: { deviceType: string; deviceCapabilities: DeviceCapabilities }
+  }: { deviceType: string; deviceCapabilities: DeviceCapabilities },
 ) => {
   const rarityConfigCache = ref<
     Map<string, { color: number; alpha: number; borderWidth: number }>
@@ -94,7 +94,7 @@ export const useCardRenderer = (
     textureWidth: number,
     textureHeight: number,
     cardWidth: number,
-    cardHeight: number
+    cardHeight: number,
   ): number => {
     const cacheKey = `${textureWidth}x${textureHeight}-${cardWidth}x${cardHeight}-${deviceType}`;
 
@@ -128,7 +128,7 @@ export const useCardRenderer = (
   const createWeaponNameText = (
     weaponName: string,
     cardWidth: number,
-    isMatched: boolean
+    isMatched: boolean,
   ): Text => {
     // Calculate responsive font size based on card width and device type
     const isMobileDevice = deviceType === "mobile";
@@ -144,7 +144,7 @@ export const useCardRenderer = (
 
     const responsiveFontSize = Math.max(
       minFontSize,
-      Math.min(maxFontSize, cardWidth * baseFontScale * fontSizeMultiplier)
+      Math.min(maxFontSize, cardWidth * baseFontScale * fontSizeMultiplier),
     );
 
     const text = new Text({
@@ -178,7 +178,7 @@ export const useCardRenderer = (
     cardWidth: number,
     cardHeight: number,
     isInteractive: boolean,
-    onCardClick: (cardId: string) => void
+    onCardClick: (cardId: string) => void,
   ): Promise<Container[]> => {
     const elements: Container[] = [];
 
@@ -235,7 +235,7 @@ export const useCardRenderer = (
     } catch (err) {
       console.warn(
         "Failed to load CS2 logo, using fallback question mark:",
-        err
+        err,
       );
       // TODO - add a fallback image here is twice times
       const questionMark = new Graphics()
@@ -265,18 +265,18 @@ export const useCardRenderer = (
 
       // Only handle pointerdown/up for visual feedback, not for movement tracking
       let isPointerDown = false;
-      cardBackContainer.on("pointerdown", (event) => {
+      cardBackContainer.on("pointerdown", () => {
         isPointerDown = true;
         cardBack.alpha = 0.6;
         // Don't stop propagation - let parallax handle movement
       });
-      cardBackContainer.on("pointerup", (event) => {
+      cardBackContainer.on("pointerup", () => {
         if (isPointerDown) {
           cardBack.alpha = 0.7;
           isPointerDown = false;
         }
       });
-      cardBackContainer.on("pointerupoutside", (event) => {
+      cardBackContainer.on("pointerupoutside", () => {
         if (isPointerDown) {
           cardBack.alpha = 0.9;
           isPointerDown = false;
@@ -292,7 +292,7 @@ export const useCardRenderer = (
   const createRevealedCard = async (
     card: GameCard,
     cardWidth: number,
-    cardHeight: number
+    cardHeight: number,
   ): Promise<Container[]> => {
     const elements: Container[] = [];
 
@@ -326,7 +326,7 @@ export const useCardRenderer = (
             texture.width,
             texture.height,
             cardWidth,
-            cardHeight
+            cardHeight,
           );
 
           weaponSprite.scale.set(scale);
@@ -369,7 +369,7 @@ export const useCardRenderer = (
       const weaponNameText = createWeaponNameText(
         card.cs2Item.name,
         cardWidth,
-        isMatched
+        isMatched,
       );
 
       const isMobileDevice = deviceType === "mobile";
@@ -394,7 +394,7 @@ export const useCardRenderer = (
     cardWidth: number,
     cardHeight: number,
     isInteractive: boolean,
-    onCardClick: (cardId: string) => void
+    onCardClick: (cardId: string) => void,
   ): Promise<Container | null> => {
     try {
       const cardContainer = new Container();
@@ -408,7 +408,7 @@ export const useCardRenderer = (
           cardWidth,
           cardHeight,
           isInteractive,
-          onCardClick
+          onCardClick,
         );
       } else if (card.state === "revealed" || card.state === "matched") {
         elements = await createRevealedCard(card, cardWidth, cardHeight);

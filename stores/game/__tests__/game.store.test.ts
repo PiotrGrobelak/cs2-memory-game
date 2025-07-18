@@ -152,7 +152,7 @@ describe("Game Composable", () => {
       // Find two cards with the same pairId
       const firstCard = game.cards.value[0];
       const matchingCard = game.cards.value.find(
-        (card) => card.pairId === firstCard.pairId && card.id !== firstCard.id
+        (card) => card.pairId === firstCard.pairId && card.id !== firstCard.id,
       );
 
       if (matchingCard) {

@@ -74,9 +74,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import { useWindowSize } from "@vueuse/core";
-
 type GameStatus = "ready" | "playing" | "paused" | "completed" | "initializing";
 
 interface Props {
@@ -84,25 +81,19 @@ interface Props {
   gameStatus: GameStatus;
 }
 
-type GameControlEvents =
-  | "resume-unfinished-game"
-  | "start-new-game"
-  | "pause-game"
-  | "resume-game"
-  | "play-again"
-  | "show-new-game-dialog"
-  | "clear-unfinished-game";
-
 interface Emits {
-  (e: GameControlEvents): void;
+  (
+    e:
+      | "resume-unfinished-game"
+      | "start-new-game"
+      | "pause-game"
+      | "resume-game"
+      | "play-again"
+      | "show-new-game-dialog"
+      | "clear-unfinished-game",
+  ): void;
 }
 
 defineProps<Props>();
 defineEmits<Emits>();
-
-const { width } = useWindowSize();
-
-const buttonSize = computed(() => {
-  return width.value <= 768 ? "small" : "large";
-});
 </script>

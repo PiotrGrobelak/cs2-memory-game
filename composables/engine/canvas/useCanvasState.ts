@@ -112,7 +112,7 @@ export const useCanvasState = (config: PixiResponsiveConfig) => {
   };
 
   const getElementDimensions = (
-    container: HTMLElement | undefined
+    container: HTMLElement | undefined,
   ): {
     width: number;
     height: number;
@@ -133,7 +133,7 @@ export const useCanvasState = (config: PixiResponsiveConfig) => {
   };
 
   const createResizeHandler = (
-    onResize: (width: number, height: number) => void
+    onResize: (width: number, height: number) => void,
   ): (() => void) => {
     return useThrottleFn(() => {
       setResizing(true);
@@ -148,7 +148,7 @@ export const useCanvasState = (config: PixiResponsiveConfig) => {
   };
 
   const watchContainerDimensions = (
-    onDimensionChange: () => void
+    onDimensionChange: () => void,
   ): (() => void) => {
     const stopWatcher = watch(containerDimensions, onDimensionChange, {
       deep: true,
@@ -172,7 +172,7 @@ export const useCanvasState = (config: PixiResponsiveConfig) => {
     // Watch for device changes
     const stopDeviceWatcher = watch(
       [deviceType, deviceOrientation],
-      handleOrientationChange
+      handleOrientationChange,
     );
 
     cleanupFunctions.push(stopDeviceWatcher);

@@ -51,7 +51,7 @@ export const useTextureLoader = () => {
   const loadTextureBatch = async (
     urls: string[],
     onProgress?: (loaded: number, total: number) => void,
-    retryAttempt = 0
+    retryAttempt = 0,
   ): Promise<{ successful: string[]; failed: string[] }> => {
     const successful: string[] = [];
     const failed: string[] = [];
@@ -75,7 +75,7 @@ export const useTextureLoader = () => {
         console.warn(
           `❌ Failed to load texture (attempt ${retryAttempt + 1}):`,
           imageUrl,
-          error
+          error,
         );
         failed.push(imageUrl);
       }
@@ -86,13 +86,13 @@ export const useTextureLoader = () => {
     // Handle retries for failed textures
     if (failed.length > 0 && retryAttempt < BATCH_CONFIG.RETRY_ATTEMPTS) {
       await new Promise((resolve) =>
-        setTimeout(resolve, BATCH_CONFIG.RETRY_DELAY)
+        setTimeout(resolve, BATCH_CONFIG.RETRY_DELAY),
       );
 
       const retryResult = await loadTextureBatch(
         failed,
         onProgress,
-        retryAttempt + 1
+        retryAttempt + 1,
       );
       successful.push(...retryResult.successful);
 
@@ -108,7 +108,7 @@ export const useTextureLoader = () => {
 
   const preloadCardTextures = async (
     cards: GameCard[],
-    onProgress?: (loaded: number, total: number) => void
+    onProgress?: (loaded: number, total: number) => void,
   ): Promise<void> => {
     const imageUrls = extractImageUrls(cards);
 
@@ -145,7 +145,7 @@ export const useTextureLoader = () => {
     for (let i = 0; i < batches.length; i += BATCH_CONFIG.CONCURRENT_BATCHES) {
       const currentBatches = batches.slice(
         i,
-        i + BATCH_CONFIG.CONCURRENT_BATCHES
+        i + BATCH_CONFIG.CONCURRENT_BATCHES,
       );
       const batchPromises = currentBatches.map(processBatch);
       const results = await Promise.all(batchPromises);

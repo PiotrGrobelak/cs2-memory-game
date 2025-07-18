@@ -67,7 +67,7 @@ export const useDeviceDetection = ({
     return Boolean(
       "ontouchstart" in window ||
         navigator.maxTouchPoints > 0 ||
-        ["mobile", "tablet"].includes(uaResult.device.type || "")
+        ["mobile", "tablet"].includes(uaResult.device.type || ""),
     );
   });
 
@@ -100,7 +100,7 @@ export const useDeviceDetection = ({
   });
 
   const hasMouseSupport = computed(
-    () => deviceCapabilities.value.hasMouseSupport
+    () => deviceCapabilities.value.hasMouseSupport,
   );
 
   return {

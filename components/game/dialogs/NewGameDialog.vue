@@ -232,6 +232,6 @@ watch(
     if (!newValue) {
       resetForm();
     }
-  }
+  },
 );
 </script>
