@@ -119,3 +119,52 @@ The new layout system provides:
 - **Square Strategy**: Balanced symmetric layouts for square screens
 - **Performance Adaptation**: Dynamic constraint adjustment based on device capabilities
 - **Validation System**: Layout quality assessment with warnings and recommendations
+
+## 🚀 Deployment & Infrastructure
+
+### Live Environment
+
+- **Production URL**: [https://cs2-memory-game.pages.dev/](https://cs2-memory-game.pages.dev/)
+- **Hosting**: Cloudflare Pages
+- **Build Preset**: `cloudflare_pages` (Nuxt 3)
+
+### CI/CD Pipeline
+
+The deployment architecture uses **GitHub Actions** with modular composite actions:
+
+```
+.github/
+├── workflows/
+│   └── master.yml              # Main deployment workflow
+└── actions/
+    ├── install-dependencies/   # Node.js setup & npm install
+    ├── lint-and-format/       # ESLint & Prettier checks
+    └── unit-test/             # Vitest test execution
+```
+
+### Deployment Flow
+
+1. **Quality Gates**
+
+   - Code linting (ESLint)
+   - Format checking (Prettier)
+   - Unit test execution (Vitest)
+
+2. **Build Process**
+
+   - Nuxt 3 static generation
+   - Cloudflare Pages optimization
+   - Asset bundling and optimization
+
+3. **Deployment**
+   - Automatic deployment from `master` branch
+   - Cloudflare global CDN distribution
+   - Environment URL generation
+
+### Infrastructure Features
+
+- **Global CDN**: Cloudflare's edge network for low latency
+- **Zero-Config Deployment**: Automatic builds on push to master
+- **Environment Management**: Production environment with URL tracking
+- **Node.js Version**: Fixed to v22 (via `.nvmrc`)
+- **Concurrent Builds**: Cancellation of in-progress builds on new commits

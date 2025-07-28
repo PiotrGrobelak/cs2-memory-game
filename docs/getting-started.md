@@ -1,9 +1,19 @@
 # 🚀 Getting Started
 
+## 🌐 Try It Live First
+
+**[🚀 Play Now](https://cs2-memory-game.pages.dev/)**
+
+Want to try the game immediately? Visit the live demo at [cs2-memory-game.pages.dev](https://cs2-memory-game.pages.dev/) - no installation required!
+
+## 💻 Local Development Setup
+
+If you want to contribute or run the project locally:
+
 ## 📋 Prerequisites
 
-- Node.js (version 18 or higher)
-- npm or yarn package manager
+- Node.js (version 22 or higher - see `.nvmrc`)
+- npm package manager
 
 ## 💻 Installation
 
@@ -27,3 +37,12 @@ npm run dev
 ```
 
 4. 🌐 Open your browser and navigate to `http://localhost:3000`
+
+## 🚀 Deployment Information
+
+The project uses:
+
+- **Hosting**: Cloudflare Pages
+- **CI/CD**: GitHub Actions
+- **Automatic Deployment**: From `master` branch
+- **Node.js Version**: 22 (specified in `.nvmrc`)

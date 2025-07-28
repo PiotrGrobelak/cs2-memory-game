@@ -2,6 +2,12 @@
 
 A browser-based memory card matching game featuring Counter-Strike 2 weapons and items, built with modern web technologies.
 
+## 🌐 Live Demo
+
+**[🚀 Play Now - cs2-memory-game.pages.dev](https://cs2-memory-game.pages.dev/)**
+
+The game is deployed and ready to play! Experience the full CS2 Memory Game with all features including canvas-based rendering, multiple difficulty levels, and QR code sharing.
+
 <img src="./public/hero.png" alt="CS2 Memory Game" width="800" />
 
 ## ✨ Key Features

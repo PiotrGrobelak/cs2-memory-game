@@ -1,4 +1,40 @@
-# 👨‍💻 Development
+# ��‍💻 Development
+
+## 🚀 Deployment
+
+The project uses **Cloudflare Pages** for hosting and **GitHub Actions** for CI/CD automation.
+
+### Live Application
+
+- **Production URL**: [https://cs2-memory-game.pages.dev/](https://cs2-memory-game.pages.dev/)
+- **Deployment**: Automatic from `master` branch
+
+### CI/CD Pipeline
+
+The GitHub Actions workflow (`.github/workflows/master.yml`) includes:
+
+1. **🔍 Code Quality Checks**
+
+   - ESLint linting (`npm run lint:eslint`)
+   - Prettier formatting check (`npm run lint:prettier`)
+
+2. **🧪 Testing**
+
+   - Unit tests with Vitest (`npm run test`)
+   - Comprehensive test coverage
+
+3. **📦 Build & Deploy**
+   - Nuxt build with Cloudflare Pages preset
+   - Automatic deployment to Cloudflare Pages
+
+### Manual Deployment
+
+To trigger a manual deployment:
+
+```bash
+# Manual workflow trigger (requires GitHub CLI)
+gh workflow run master.yml
+```
 
 ## 📜 Available Scripts
 
